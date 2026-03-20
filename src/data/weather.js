@@ -1,10 +1,13 @@
-export const weather = [
-  { district: 'Pune', rainfallLast7d: 185, rainfallLast24h: 42, warningLevel: 'orange', trend: 'increasing' },
-  { district: 'Ratnagiri', rainfallLast7d: 95, rainfallLast24h: 18, warningLevel: 'yellow', trend: 'stable' },
-  { district: 'Satara', rainfallLast7d: 210, rainfallLast24h: 55, warningLevel: 'red', trend: 'increasing' },
-  { district: 'Raigad', rainfallLast7d: 120, rainfallLast24h: 28, warningLevel: 'yellow', trend: 'decreasing' },
-  { district: 'Nagpur', rainfallLast7d: 130, rainfallLast24h: 35, warningLevel: 'orange', trend: 'increasing' },
-  { district: 'Kolhapur', rainfallLast7d: 60, rainfallLast24h: 10, warningLevel: 'green', trend: 'stable' },
+const weather = [
+  { district: "Nagpur", rainfallLast24h: 45, rainfallLast7d: 310, windSpeedKmh: 22, temperatureC: 31, humidityPercent: 88, warningLevel: "extreme", trend: "increasing" },
+  { district: "Chandrapur", rainfallLast24h: 52, rainfallLast7d: 380, windSpeedKmh: 28, temperatureC: 30, humidityPercent: 91, warningLevel: "extreme", trend: "increasing" },
+  { district: "Ratnagiri", rainfallLast24h: 38, rainfallLast7d: 265, windSpeedKmh: 35, temperatureC: 28, humidityPercent: 85, warningLevel: "warning", trend: "stable" },
+  { district: "Satara", rainfallLast24h: 20, rainfallLast7d: 140, windSpeedKmh: 18, temperatureC: 27, humidityPercent: 72, warningLevel: "watch", trend: "stable" },
+  { district: "Kolhapur", rainfallLast24h: 35, rainfallLast7d: 245, windSpeedKmh: 25, temperatureC: 26, humidityPercent: 82, warningLevel: "warning", trend: "increasing" },
+  { district: "Pune", rainfallLast24h: 22, rainfallLast7d: 160, windSpeedKmh: 15, temperatureC: 29, humidityPercent: 70, warningLevel: "watch", trend: "stable" },
+  { district: "Raigad", rainfallLast24h: 42, rainfallLast7d: 340, windSpeedKmh: 30, temperatureC: 27, humidityPercent: 90, warningLevel: "extreme", trend: "increasing" },
+  { district: "Yavatmal", rainfallLast24h: 8, rainfallLast7d: 55, windSpeedKmh: 12, temperatureC: 33, humidityPercent: 60, warningLevel: "none", trend: "decreasing" }
 ];
 
+export { weather };
 export default weather;

@@ -4,12 +4,12 @@ import { brandTokens } from '../../theme';
 
 const COLORS = [brandTokens.risk.green, brandTokens.risk.yellow, brandTokens.risk.orange, brandTokens.risk.red];
 
-export const ZoneDistributionChart = ({ distribution }) => {
+export const ZoneDistributionChart = ({ distribution = { green: 0, yellow: 0, orange: 0, red: 0 } }) => {
   const data = [
-    { name: 'Safe', value: distribution.green },
-    { name: 'Caution', value: distribution.yellow },
-    { name: 'High', value: distribution.orange },
-    { name: 'Critical', value: distribution.red },
+    { name: 'Safe', value: distribution?.green || 0 },
+    { name: 'Caution', value: distribution?.yellow || 0 },
+    { name: 'High', value: distribution?.orange || 0 },
+    { name: 'Critical', value: distribution?.red || 0 },
   ];
 
   return (

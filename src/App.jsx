@@ -1,9 +1,20 @@
-import React from 'react';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './routes/router';
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import router from "./routes/router";
 
-export const App = () => {
-  return <RouterProvider router={router} />;
-};
+const theme = createTheme({
+  palette: { mode: "dark" }
+});
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </AuthProvider>
+  );
+}

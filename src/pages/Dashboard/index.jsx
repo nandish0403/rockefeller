@@ -17,94 +17,78 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const {
     kpis, recentAlerts, distribution, trendData,
-    activityFeed, rainfallSummary, zones,
+    activityFeed, rainfallSummary, zones, loading,
   } = useDashboardData();
 
+  if (loading) return <Box sx={{ p: 4 }}><Typography>Loading...</Typography></Box>;
+
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>Dashboard</Typography>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" fontWeight={700} mb={3}>Dashboard</Typography>
 
       <KpiRow kpis={kpis} />
 
-      <Grid container spacing={2.5} sx={{ mt: 0.5 }}>
+      <Grid container spacing={3} mt={1}>
         {/* Left: Mini Map */}
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={6}>
           <SectionCard
-            title="Zone Risk Map"
+            title="Zone Map"
             action={<Button size="small" onClick={() => navigate('/map')}>Full Map</Button>}
           >
-            <Box sx={{ height: 320, borderRadius: '8px', overflow: 'hidden' }}>
-              <MapContainer
-                center={[19.0, 75.0]}
-                zoom={7}
-                style={{ height: '100%', width: '100%' }}
-                scrollWheelZoom={false}
-              >
-                <TileLayer
-                  attribution='&copy; OpenStreetMap'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {zones.map((zone) => (
-                  <Polygon
-                    key={zone.id}
-                    positions={zone.latlngs}
-                    pathOptions={{
-                      color: getRiskColor(zone.riskLevel),
-                      fillColor: getRiskColor(zone.riskLevel),
-                      fillOpacity: 0.5,
-                      weight: 2,
-                    }}
-                    eventHandlers={{
-                      click: () => navigate(`/zones/${zone.id}`),
-                    }}
-                  >
-                    <Tooltip>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{zone.name}</Typography>
-                      <Typography variant="caption">{zone.mineName}</Typography>
-                    </Tooltip>
-                  </Polygon>
-                ))}
-              </MapContainer>
-            </Box>
+            <MapContainer
+              center={[20.5, 78.9]}
+              zoom={6}
+              style={{ height: 300, borderRadius: 8 }}
+              zoomControl={false}
+              scrollWheelZoom={false}
+            >
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {zones.map((zone) => (
+                <Polygon
+                  key={zone.id}
+                  positions={zone.latlngs}
+                  pathOptions={{ color: getRiskColor(zone.risk_level), fillOpacity: 0.4 }}
+                  eventHandlers={{ click: () => navigate(`/zones/${zone.id}`) }}
+                >
+                  <Tooltip>
+                    <Typography variant="caption" fontWeight={600}>{zone.name}</Typography><br />
+                    <Typography variant="caption">{zone.mine_name}</Typography>
+                  </Tooltip>
+                </Polygon>
+              ))}
+            </MapContainer>
           </SectionCard>
         </Grid>
 
         {/* Right: Recent Alerts */}
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} md={6}>
           <SectionCard
-            title="Recent Alerts"
+            title="Recent Active Alerts"
             action={<Button size="small" onClick={() => navigate('/alerts')}>View All</Button>}
           >
-            <List disablePadding>
+            <List dense disablePadding>
               {recentAlerts.map((alert) => (
                 <ListItemButton
                   key={alert.id}
-                  sx={{
-                    px: 1,
-                    py: 1.5,
-                    borderRadius: '8px',
-                    mb: 0.5,
-                    '&:hover': { bgcolor: 'action.hover' },
-                  }}
                   onClick={() => navigate('/alerts')}
+                  sx={{ borderRadius: 1, mb: 0.5 }}
                 >
                   <ListItemText
                     primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <RiskBadge level={alert.riskLevel} />
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {alert.zoneName}
-                        </Typography>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        {/* ✅ FIX: snake_case field + optional chaining */}
+                        <Typography variant="body2" fontWeight={600}>{alert.zone_name}</Typography>
+                        <RiskBadge level={alert.risk_level} />
                       </Box>
                     }
                     secondary={
-                      <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-                        {alert.triggerReason.substring(0, 80)}...
+                      <Typography variant="caption" color="text.secondary">
+                        {(alert.trigger_reason ?? 'No details').substring(0, 80)}...
                       </Typography>
                     }
                   />
-                  <Typography variant="caption" sx={{ color: 'text.secondary', whiteSpace: 'nowrap', ml: 1 }}>
-                    {formatTimeAgo(alert.timestamp)}
+                  <Typography variant="caption" color="text.secondary" ml={1}>
+                    {formatTimeAgo(alert.created_at)}
                   </Typography>
                 </ListItemButton>
               ))}
@@ -114,30 +98,22 @@ const DashboardPage = () => {
 
         {/* Rainfall Widget */}
         <Grid item xs={12} md={4}>
-          <SectionCard title="Rainfall Warning">
-            <RainfallWidget data={rainfallSummary} />
-          </SectionCard>
+          <RainfallWidget data={rainfallSummary} />
         </Grid>
 
         {/* Risk Trend */}
         <Grid item xs={12} md={8}>
-          <SectionCard title="Risk Trend — Last 30 Days">
-            <RiskTrendChart data={trendData} />
-          </SectionCard>
+          <RiskTrendChart data={trendData} />
         </Grid>
 
         {/* Zone Distribution */}
-        <Grid item xs={12} md={5}>
-          <SectionCard title="Zone Risk Distribution">
-            <ZoneDistributionChart distribution={distribution} />
-          </SectionCard>
+        <Grid item xs={12} md={4}>
+          <ZoneDistributionChart distribution={distribution} />
         </Grid>
 
         {/* Activity Feed */}
-        <Grid item xs={12} md={7}>
-          <SectionCard title="Recent Activity">
-            <ActivityFeed items={activityFeed} />
-          </SectionCard>
+        <Grid item xs={12} md={8}>
+          <ActivityFeed items={activityFeed} />
         </Grid>
       </Grid>
     </Box>

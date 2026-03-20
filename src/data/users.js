@@ -1,11 +1,11 @@
-export const users = [
-  { id: 'u1', name: 'Dr. Anil Kulkarni', role: 'Admin', avatar: 'https://ui-avatars.com/api/?name=Anil+Kulkarni&background=1565C0&color=fff', zoneAssigned: null, district: 'Pune' },
-  { id: 'u2', name: 'Vikram Singh', role: 'Safety Officer', avatar: 'https://ui-avatars.com/api/?name=Vikram+Singh&background=0288D1&color=fff', zoneAssigned: 'z1', district: 'Pune' },
-  { id: 'u3', name: 'Arjun Deshmukh', role: 'Field Worker', avatar: 'https://ui-avatars.com/api/?name=Arjun+Deshmukh&background=2E7D32&color=fff', zoneAssigned: 'z1', district: 'Pune' },
-  { id: 'u4', name: 'Priya Patil', role: 'Field Worker', avatar: 'https://ui-avatars.com/api/?name=Priya+Patil&background=2E7D32&color=fff', zoneAssigned: 'z5', district: 'Satara' },
-  { id: 'u5', name: 'Meena Jadhav', role: 'Safety Officer', avatar: 'https://ui-avatars.com/api/?name=Meena+Jadhav&background=0288D1&color=fff', zoneAssigned: 'z14', district: 'Raigad' },
+const users = [
+  { id: "u001", name: "Admin User", email: "admin@geoalert.com", role: "admin", avatar: "https://i.pravatar.cc/150?img=1", zoneAssigned: null, district: "All" },
+  { id: "u002", name: "Eng. Sharma", email: "sharma@geoalert.com", role: "safety_officer", avatar: "https://i.pravatar.cc/150?img=2", zoneAssigned: "z001", district: "Nagpur" },
+  { id: "u003", name: "Eng. Nair", email: "nair@geoalert.com", role: "safety_officer", avatar: "https://i.pravatar.cc/150?img=3", zoneAssigned: "z005", district: "Ratnagiri" },
+  { id: "u004", name: "Rajan Patil", email: "rajan@geoalert.com", role: "field_worker", avatar: "https://i.pravatar.cc/150?img=4", zoneAssigned: "z001", district: "Nagpur" },
+  { id: "u005", name: "Sunita Meshram", email: "sunita@geoalert.com", role: "field_worker", avatar: "https://i.pravatar.cc/150?img=5", zoneAssigned: "z003", district: "Chandrapur" }
 ];
 
-export const currentUser = users[0];
-
+const currentUser = users[0];
+export { users, currentUser };
 export default users;

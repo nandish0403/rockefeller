@@ -1,65 +1,101 @@
-import React, { useState } from 'react';
-import { Box, Typography, TextField, Grid } from '@mui/material';
-import { DateRange as DateIcon } from '@mui/icons-material';
-import { AnalyticsCharts } from '../../components/analytics/AnalyticsCharts';
-import { DataTable } from '../../components/common/DataTable';
-import { SectionCard } from '../../components/common/SectionCard';
-import { RiskBadge } from '../../components/common/RiskBadge';
-import { zones } from '../../data/zones';
+import { useState, useEffect, useMemo } from "react";
+import { Box, Typography, Grid, CircularProgress, Alert, Card, CardContent } from "@mui/material";
+import { fetchZones } from "../../api/zones";
+import { fetchAlerts } from "../../api/alerts";
+import { SectionCard } from "../../components/common/SectionCard";
 
-const heatmapColumns = [
-  { id: 'name', label: 'Zone' },
-  { id: 'district', label: 'District' },
-  { id: 'mineName', label: 'Mine' },
-  { id: 'riskLevel', label: 'Risk Level', render: (v) => <RiskBadge level={v} /> },
-  { id: 'riskScore', label: 'Score', render: (v) => (
-    <Typography variant="body2" sx={{ fontWeight: 600 }}>{v}</Typography>
-  )},
-];
+export default function Analytics() {
+  const [zones,   setZones]   = useState([]);
+  const [alerts,  setAlerts]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
-const AnalyticsPage = () => {
-  const [dateFrom, setDateFrom] = useState('2026-01-01');
-  const [dateTo, setDateTo] = useState('2026-03-13');
+  useEffect(() => {
+    Promise.all([fetchZones(), fetchAlerts()])
+      .then(([z, a]) => { setZones(z); setAlerts(a); })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>Analytics</Typography>
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-          <DateIcon sx={{ color: 'text.secondary' }} />
-          <TextField
-            label="From"
-            type="date"
-            size="small"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ width: 160 }}
-          />
-          <TextField
-            label="To"
-            type="date"
-            size="small"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            sx={{ width: 160 }}
-          />
-        </Box>
-      </Box>
+  const stats = useMemo(() => ({
+    byRisk: {
+      red:    zones.filter(z => z.risk_level === "red").length,
+      orange: zones.filter(z => z.risk_level === "orange").length,
+      yellow: zones.filter(z => z.risk_level === "yellow").length,
+      green:  zones.filter(z => z.risk_level === "green").length,
+    },
+    alertsByDistrict: alerts.reduce((acc, a) => {
+      acc[a.district] = (acc[a.district] || 0) + 1;
+      return acc;
+    }, {}),
+    alertsByStatus: {
+      active:       alerts.filter(a => a.status === "active").length,
+      acknowledged: alerts.filter(a => a.status === "acknowledged").length,
+      resolved:     alerts.filter(a => a.status === "resolved").length,
+    },
+  }), [zones, alerts]);
 
-      <AnalyticsCharts />
-
-      <Box sx={{ mt: 3 }}>
-        <SectionCard title="Zone Heatmap Summary">
-          <DataTable
-            columns={heatmapColumns}
-            rows={[...zones].sort((a, b) => b.riskScore - a.riskScore)}
-          />
-        </SectionCard>
-      </Box>
+  if (loading) return (
+    <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+      <CircularProgress />
     </Box>
   );
-};
 
-export default AnalyticsPage;
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" fontWeight={700} color="white" mb={3}>
+        Analytics
+      </Typography>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Grid container spacing={3}>
+        {/* Risk Distribution */}
+        <Grid item xs={12} md={6}>
+          <SectionCard title="Zones by Risk Level">
+            {Object.entries(stats.byRisk).map(([level, count]) => (
+              <Box key={level} sx={{ display: "flex", justifyContent: "space-between", py: 1,
+                borderBottom: "1px solid #222" }}>
+                <Typography sx={{ textTransform: "capitalize", color: {
+                  red: "#f44336", orange: "#ff9800", yellow: "#ffeb3b", green: "#4caf50"
+                }[level] }}>{level}</Typography>
+                <Typography color="white" fontWeight={600}>{count} zones</Typography>
+              </Box>
+            ))}
+          </SectionCard>
+        </Grid>
+
+        {/* Alert Status */}
+        <Grid item xs={12} md={6}>
+          <SectionCard title="Alerts by Status">
+            {Object.entries(stats.alertsByStatus).map(([status, count]) => (
+              <Box key={status} sx={{ display: "flex", justifyContent: "space-between", py: 1,
+                borderBottom: "1px solid #222" }}>
+                <Typography sx={{ textTransform: "capitalize" }} color="text.secondary">{status}</Typography>
+                <Typography color="white" fontWeight={600}>{count}</Typography>
+              </Box>
+            ))}
+          </SectionCard>
+        </Grid>
+
+        {/* Alerts by District */}
+        <Grid item xs={12}>
+          <SectionCard title="Alerts by District">
+            <Grid container spacing={2}>
+              {Object.entries(stats.alertsByDistrict).map(([district, count]) => (
+                <Grid item xs={6} sm={4} md={3} key={district}>
+                  <Card sx={{ bgcolor: "#1a1a1a", border: "1px solid #222" }}>
+                    <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                      <Typography variant="h4" color="white" fontWeight={700}>{count}</Typography>
+                      <Typography variant="body2" color="text.secondary">{district}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </SectionCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}

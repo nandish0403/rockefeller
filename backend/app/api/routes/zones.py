@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
+from datetime import datetime
 from app.models.zone import Zone
+from app.schemas.zone import ZoneUpdateRequest
 from app.api.dependencies import get_current_user, require_officer
 from app.models.user import User
 
@@ -25,14 +27,15 @@ def zone_to_dict(z: Zone) -> dict:
         "created_at": z.created_at.isoformat() if z.created_at else None,
     }
 
+# ✅ All logged-in users can view zones
 @router.get("")
 async def get_zones(
     district: Optional[str] = Query(None),
     risk_level: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
 ):
-    query = {}
-    zones = await Zone.find_all().to_list()
+    zones = await Zone.find().to_list()          # ✅ FIXED: was find_all()
     if district:
         zones = [z for z in zones if z.district.lower() == district.lower()]
     if risk_level:
@@ -41,24 +44,30 @@ async def get_zones(
         zones = [z for z in zones if z.status == status]
     return [zone_to_dict(z) for z in zones]
 
+# ✅ All logged-in users can view a single zone
 @router.get("/{zone_id}")
-async def get_zone(zone_id: str):
+async def get_zone(
+    zone_id: str,
+    current_user: User = Depends(get_current_user),
+):
     zone = await Zone.get(zone_id)
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
     return zone_to_dict(zone)
 
+# 🔒 Only safety_officer / admin can edit zones
 @router.patch("/{zone_id}")
 async def update_zone(
     zone_id: str,
-    body: dict,
-    current_user: User = Depends(require_officer)
+    body: ZoneUpdateRequest,
+    current_user: User = Depends(require_officer),
 ):
     zone = await Zone.get(zone_id)
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
-    for key, value in body.items():
-        if hasattr(zone, key) and value is not None:
-            setattr(zone, key, value)
+    update_data = body.model_dump(exclude_none=True)
+    for key, value in update_data.items():
+        setattr(zone, key, value)
+    zone.last_updated = datetime.utcnow()
     await zone.save()
     return zone_to_dict(zone)

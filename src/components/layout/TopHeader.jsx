@@ -1,123 +1,74 @@
-import React from 'react';
-import { AppBar, Toolbar, Typography, Box, Button, Badge, IconButton, Avatar, Chip } from '@mui/material';
-import { Notifications as NotificationsIcon, Menu as MenuIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { alerts } from '../../data/alerts';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { fetchAlerts } from "../../api/alerts";
+import {
+  AppBar, Toolbar, IconButton, Typography, Badge,
+  Avatar, Box, Menu, MenuItem, Divider, Tooltip,
+} from "@mui/material";
+import { Menu as MenuIcon, Notifications, Logout, Person } from "@mui/icons-material";
 
 export const TopHeader = ({ onMenuClick, isMobile }) => {
-  const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
-  const activeAlertCount = alerts.filter((a) => a.status === 'active').length;
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    fetchAlerts({ status: "active" })
+      .then(data => setAlertCount(data.length))
+      .catch(() => setAlertCount(0));
+  }, []);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
-    <AppBar
-      position="fixed"
-      elevation={0}
-      sx={{
-        zIndex: (theme) => theme.zIndex.drawer + 1,
-        bgcolor: '#0f172a',
-        borderBottom: '1px solid #1e293b',
-      }}
-    >
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
+    <AppBar position="fixed" sx={{ zIndex: 1201, bgcolor: "#141414", borderBottom: "1px solid #222", boxShadow: "none" }}>
+      <Toolbar>
+        {isMobile && (
+          <IconButton color="inherit" edge="start" onClick={onMenuClick} sx={{ mr: 2 }}>
+            <MenuIcon />
+          </IconButton>
+        )}
+        <Typography variant="h6" fontWeight={700} color="white" sx={{ flexGrow: 1 }}>
+          Rockefeller
+        </Typography>
 
-        {/* Left */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {isMobile && (
-            <IconButton color="inherit" onClick={onMenuClick} edge="start">
-              <MenuIcon />
-            </IconButton>
-          )}
-          <Typography variant="h6" fontWeight={700} color="white" noWrap>
-            GeoAlert
-          </Typography>
-          <Typography variant="caption" color="grey.500" sx={{ display: { xs: 'none', sm: 'block' } }}>
-            Mine Safety Dashboard
-          </Typography>
-        </Box>
-
-        {/* Right */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <IconButton color="inherit">
-            <Badge badgeContent={activeAlertCount} color="error">
-              <NotificationsIcon />
+        {/* Active alerts badge */}
+        <Tooltip title={`${alertCount} active alerts`}>
+          <IconButton color="inherit" onClick={() => navigate("/alerts")}>
+            <Badge badgeContent={alertCount} color="error">
+              <Notifications />
             </Badge>
           </IconButton>
+        </Tooltip>
 
-          {currentUser ? (
-            /* Logged in — show name + role + logout */
-            <>
-              <Avatar
-                sx={{ width: 32, height: 32, bgcolor: '#ef4444', fontSize: '0.85rem', fontWeight: 700 }}
-              >
-                {currentUser.name?.charAt(0).toUpperCase()}
-              </Avatar>
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                <Typography variant="body2" color="white" fontWeight={600} lineHeight={1.2}>
-                  {currentUser.name}
-                </Typography>
-                <Typography variant="caption" color="grey.400" lineHeight={1}>
-                  {currentUser.role?.replace('_', ' ')}
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={handleLogout}
-                sx={{
-                  color: '#94a3b8',
-                  borderColor: '#334155',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': { borderColor: '#ef4444', color: '#ef4444' }
-                }}
-              >
-                Logout
-              </Button>
-            </>
-          ) : (
-            /* Not logged in — show Login + Sign Up */
-            <>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => navigate('/login')}
-                sx={{
-                  color: 'white',
-                  borderColor: '#334155',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': { borderColor: '#ef4444', color: '#ef4444' }
-                }}
-              >
-                Login
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={() => navigate('/signup')}
-                sx={{
-                  bgcolor: '#ef4444',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  '&:hover': { bgcolor: '#dc2626' }
-                }}
-              >
-                Sign Up
-              </Button>
-            </>
-          )}
-        </Box>
+        {/* User menu */}
+        <IconButton onClick={e => setAnchorEl(e.currentTarget)} sx={{ ml: 1 }}>
+          <Avatar sx={{ width: 32, height: 32, bgcolor: "#e53935", fontSize: 14 }}>
+            {currentUser?.name?.[0]?.toUpperCase() || "U"}
+          </Avatar>
+        </IconButton>
 
+        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+          <Box sx={{ px: 2, py: 1 }}>
+            <Typography variant="body2" fontWeight={600}>{currentUser?.name}</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: "capitalize" }}>
+              {currentUser?.role?.replace("_", " ")}
+            </Typography>
+          </Box>
+          <Divider />
+          <MenuItem onClick={() => { navigate("/profile"); setAnchorEl(null); }}>
+            <Person fontSize="small" sx={{ mr: 1 }} /> Profile
+          </MenuItem>
+          <MenuItem onClick={handleLogout}>
+            <Logout fontSize="small" sx={{ mr: 1 }} /> Logout
+          </MenuItem>
+        </Menu>
       </Toolbar>
     </AppBar>
   );
 };
-
-export default TopHeader;

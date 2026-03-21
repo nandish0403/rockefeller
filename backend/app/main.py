@@ -3,9 +3,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db, close_db
-from app.api.routes.auth import router as auth_router
-from app.api.routes.zones import router as zones_router
-from app.api.routes.alerts import router as alerts_router
+from app.api.routes.auth         import router as auth_router
+from app.api.routes.zones        import router as zones_router
+from app.api.routes.alerts       import router as alerts_router
+from app.api.routes.reports      import router as reports_router
+from app.api.routes.crack_reports import router as crack_reports_router
+from app.api.routes.blast_events import router as blast_events_router
+from app.api.routes.weather      import router as weather_router
 import os
 
 @asynccontextmanager
@@ -24,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-os.makedirs("uploads/reports", exist_ok=True)
+os.makedirs("uploads/reports",       exist_ok=True)
 os.makedirs("uploads/crack_reports", exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -32,6 +36,10 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(auth_router)
 app.include_router(zones_router)
 app.include_router(alerts_router)
+app.include_router(reports_router)
+app.include_router(crack_reports_router)
+app.include_router(blast_events_router)
+app.include_router(weather_router)
 
 @app.get("/api/health")
 async def health():

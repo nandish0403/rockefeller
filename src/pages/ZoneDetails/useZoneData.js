@@ -1,49 +1,57 @@
-import { useMemo, useState, useEffect } from 'react';
-import { fetchZone } from '../../api/zones';
-import { history } from '../../data/history';
-import { reports } from '../../data/reports';
-import { weather } from '../../data/weather';
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import { fetchZone } from "../../api/zones";
+import { fetchAlerts } from "../../api/alerts";
+import { fetchCrackReports } from "../../api/crackReports";
+import { fetchBlastEvents } from "../../api/blastEvents";
+import { fetchWeather } from "../../api/weather";
 
-export const useZoneData = (zoneId) => {
-  const [zone, setZone] = useState(null);
-  const [loading, setLoading] = useState(true);
+export function useZoneData() {
+  const { id } = useParams();
+
+  const [zone,         setZone]         = useState(null);
+  const [alerts,       setAlerts]       = useState([]);
+  const [crackReports, setCrackReports] = useState([]);
+  const [blastEvents,  setBlastEvents]  = useState([]);
+  const [weather,      setWeather]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
+
+  const loadZone = useCallback(() => {
+    if (!id) return;
+    setLoading(true);
+    fetchZone(id)
+      .then(setZone)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   useEffect(() => {
-    if (!zoneId) return;
-    fetchZone(zoneId)
-      .then(setZone)
-      .catch(console.error)
+    if (!id) return;
+    setLoading(true);
+    // Load zone first, then all related data in parallel
+    fetchZone(id)
+      .then(z => {
+        setZone(z);
+        return Promise.all([
+          fetchAlerts({ zone_id: id }),
+          fetchCrackReports({ zone_id: id }),
+          fetchBlastEvents({ zone_id: id }),
+          fetchWeather({ district: z.district }).catch(() => []),
+        ]);
+      })
+      .then(([a, c, b, w]) => {
+        setAlerts(a       ?? []);
+        setCrackReports(c ?? []);
+        setBlastEvents(b  ?? []);
+        setWeather(w      ?? []);
+      })
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [zoneId]);
+  }, [id]);
 
-  return useMemo(() => {
-    if (!zone) return { zone: null, zoneHistory: [], zoneReports: [], zoneWeather: null, recommendations: [], rainfallTrend: [], loading };
-
-    // these still use mock for now — replaced in Step 10
-    const zoneHistory = history.filter((h) => h.zoneId === zoneId);
-    const zoneReports = reports.filter((r) => r.zoneId === zoneId);
-    const zoneWeather = weather.find((w) => w.district === zone.district);
-
-    const recommendations = [];
-    if (zone.risk_level === 'red') {
-      recommendations.push({ type: 'Evacuate', desc: 'Evacuate all personnel immediately. Zone is at critical risk.', severity: 'critical' });
-      recommendations.push({ type: 'Restrict', desc: 'Restrict all blasting operations until geotechnical review is complete.', severity: 'critical' });
-    } else if (zone.risk_level === 'orange') {
-      recommendations.push({ type: 'Restrict', desc: 'Limit access to essential personnel only. Deploy monitoring sensors.', severity: 'high' });
-      recommendations.push({ type: 'Monitor', desc: 'Increase monitoring frequency to every 2 hours.', severity: 'high' });
-    } else if (zone.risk_level === 'yellow') {
-      recommendations.push({ type: 'Monitor', desc: 'Continue routine monitoring. Schedule detailed inspection within 48 hours.', severity: 'medium' });
-    } else {
-      recommendations.push({ type: 'Safe', desc: 'Zone is stable. Maintain standard monitoring schedule.', severity: 'low' });
-    }
-
-    const rainfallTrend = Array.from({ length: 14 }, (_, i) => ({
-      day: `Day ${i + 1}`,
-      rainfall: Math.floor(Math.random() * 40) + (zone.recent_rainfall > 100 ? 20 : 5),
-    }));
-
-    return { zone, zoneHistory, zoneReports, zoneWeather, recommendations, rainfallTrend, loading };
-  }, [zone, zoneId, loading]);
-};
-
-export default useZoneData;
+  return {
+    zone, alerts, crackReports, blastEvents, weather,
+    loading, error, refetch: loadZone,
+  };
+}

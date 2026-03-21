@@ -1,75 +1,91 @@
 import { useState, useEffect, useMemo } from "react";
 import { fetchZones } from "../../api/zones";
 import { fetchAlerts } from "../../api/alerts";
+import { fetchWeather } from "../../api/weather";
 
-export const useDashboardData = () => {
-  const [zones, setZones] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+export function useDashboardData() {
+  const [zones,   setZones]   = useState([]);
+  const [alerts,  setAlerts]  = useState([]);
+  const [weather, setWeather] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
   useEffect(() => {
-    Promise.all([fetchZones(), fetchAlerts()])
-      .then(([z, a]) => { setZones(z); setAlerts(a); })
-      .catch(console.error)
+    setLoading(true);
+    Promise.all([
+      fetchZones(),
+      fetchAlerts({ status: "active" }),
+      fetchWeather().catch(() => []),   // weather API may not exist yet — fail silently
+    ])
+      .then(([z, a, w]) => {
+        setZones(z   ?? []);
+        setAlerts(a  ?? []);
+        setWeather(w ?? []);
+      })
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
-  return useMemo(() => {
-    const kpis = {
-      totalZones: zones.length,
-      criticalZones: zones.filter((z) => z.risk_level === "red").length,
-      activeAlerts: alerts.filter((a) => a.status === "active").length,
-      reportsToday: 0,
+  // ✅ KPIs — matches KpiRow expectations
+  const kpis = useMemo(() => ({
+    totalZones:    zones.length,
+    criticalZones: zones.filter(z => z.risk_level === "red").length,    // KpiRow uses criticalZones
+    activeAlerts:  alerts.length,
+    reportsToday:  0,   // will be real once reports API is wired
+  }), [zones, alerts]);
+
+  // ✅ Distribution — matches ZoneDistributionChart { green, yellow, orange, red } shape
+  const distribution = useMemo(() => ({
+    green:  zones.filter(z => z.risk_level === "green").length,
+    yellow: zones.filter(z => z.risk_level === "yellow").length,
+    orange: zones.filter(z => z.risk_level === "orange").length,
+    red:    zones.filter(z => z.risk_level === "red").length,
+  }), [zones]);
+
+  // ✅ Activity feed — maps alerts to { type, title, subtitle, time } shape ActivityFeed expects
+  const activityFeed = useMemo(() =>
+    alerts.slice(0, 8).map(a => ({
+      type:     "alert",
+      title:    a.zone_name   ?? "Unknown Zone",
+      subtitle: a.trigger_reason ?? "Risk alert triggered",
+      time:     a.created_at  ?? null,
+    })),
+  [alerts]);
+
+  // ✅ Rainfall summary — maps Atlas weather record to RainfallWidget shape
+  const rainfallSummary = useMemo(() => {
+    if (!weather.length) return null;
+    const top = weather.reduce((max, w) =>
+      (w.rainfall_mm > (max?.rainfall_mm || 0) ? w : max), null
+    );
+    if (!top) return null;
+    return {
+      district:       top.district,
+      warningLevel:   top.warning_level,    // snake_case → camelCase for component
+      rainfallLast24h: top.rainfall_mm,
+      rainfallLast7d:  top.rainfall_7d ?? top.rainfall_mm,
+      trend:           top.trend ?? "stable",
     };
+  }, [weather]);
 
-    const recentAlerts = alerts
-      .filter((a) => a.status === "active")
-      .slice(0, 5);
-
-    const distribution = ["green", "yellow", "orange", "red"].map((level) => ({
-      name: level.charAt(0).toUpperCase() + level.slice(1),
-      value: zones.filter((z) => z.risk_level === level).length,
-      color: { green: "#22c55e", yellow: "#eab308", orange: "#f97316", red: "#ef4444" }[level],
+  // ✅ Trend data — placeholder until historical data API exists
+  const trendData = useMemo(() => {
+    const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    return days.map(day => ({
+      day,
+      red:    Math.floor(Math.random() * kpis.criticalZones + 1),
+      orange: Math.floor(Math.random() * 4),
+      yellow: Math.floor(Math.random() * 3),
     }));
+  }, [kpis.criticalZones]);
 
-    const trendData = [
-      { date: "Mar 13", green: 6, yellow: 4, orange: 3, red: 2 },
-      { date: "Mar 14", green: 5, yellow: 4, orange: 4, red: 2 },
-      { date: "Mar 15", green: 5, yellow: 3, orange: 4, red: 3 },
-      { date: "Mar 16", green: 4, yellow: 4, orange: 4, red: 3 },
-      { date: "Mar 17", green: 4, yellow: 3, orange: 5, red: 3 },
-      { date: "Mar 18", green: 4, yellow: 3, orange: 5, red: 3 },
-    ];
+  // Recent alerts for the alerts list on dashboard
+  const recentAlerts = useMemo(() => alerts.slice(0, 5), [alerts]);
 
-    // ✅ FIX: optional chaining on trigger_reason
-    const activityFeed = alerts
-      .filter((a) => a && a.zone_name && a.trigger_reason)
-      .slice(0, 8)
-      .map((a) => ({
-        id: a.id,
-        type: "alert",
-        message: `${a.zone_name} — ${a.trigger_reason?.substring(0, 60) ?? ''}...`,
-        time: a.created_at,
-        risk: a.risk_level,
-      }));
-
-    const rainfallSummary = {
-      district: "Nagpur",
-      warningLevel: "caution",
-      rainfallLast24h: 45,
-      rainfallLast7d: 310,
-      trend: "increasing",
-    };
-
-    const distributionObj = {
-      green: zones.filter((z) => z.risk_level === "green").length,
-      yellow: zones.filter((z) => z.risk_level === "yellow").length,
-      orange: zones.filter((z) => z.risk_level === "orange").length,
-      red: zones.filter((z) => z.risk_level === "red").length,
-    };
-
-    return { kpis, recentAlerts, distribution: distributionObj, trendData, activityFeed, rainfallSummary, zones, alerts, loading };
-  }, [zones, alerts, loading]);
-};
-
-export default useDashboardData;
+  return {
+    zones, alerts, weather,
+    kpis, distribution, activityFeed,
+    rainfallSummary, trendData, recentAlerts,
+    loading, error,
+  };
+}

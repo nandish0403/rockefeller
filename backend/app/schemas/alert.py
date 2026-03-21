@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+
+class CreateAlertRequest(BaseModel):
+    zone_id: str
+    zone_name: str
+    district: str
+    risk_level: str
+    trigger_reason: str
+    trigger_source: str = "manual"
+    recommended_action: Optional[str] = None
 
 class AlertResponse(BaseModel):
     id: str
@@ -10,19 +18,8 @@ class AlertResponse(BaseModel):
     risk_level: str
     trigger_reason: str
     trigger_source: str
-    recommended_action: Optional[str] = None
+    recommended_action: Optional[str]
     status: str
-    acknowledged_by: Optional[str] = None
-    acknowledged_at: Optional[datetime] = None
-    resolved_by: Optional[str] = None
-    resolved_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-
-class CreateAlertRequest(BaseModel):
-    zone_id: str
-    zone_name: str
-    district: str
-    risk_level: str
-    trigger_reason: str
-    trigger_source: Optional[str] = "manual"
-    recommended_action: Optional[str] = None
+    acknowledged_by: Optional[str]
+    resolved_by: Optional[str]
+    created_at: Optional[str]

@@ -1,26 +1,23 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api/axios";
 
-const AuthContext = createContext({
-  currentUser: null,
-  token: null,
-  isLoading: true,
-  login: async () => {},
-  logout: () => {}
-});
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token") || null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // On app load — if token exists, fetch current user from /api/auth/me
   useEffect(() => {
     if (token) {
-      axios.get("http://localhost:8000/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      api.get("/api/auth/me")
         .then(res => setCurrentUser(res.data))
-        .catch(() => { localStorage.removeItem("token"); setToken(null); })
+        .catch(() => {
+          localStorage.removeItem("token");
+          setToken(null);
+          setCurrentUser(null);
+        })
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -28,12 +25,17 @@ export const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = async (email, password) => {
-    const res = await axios.post("http://localhost:8000/api/auth/login", { email, password });
+    const res = await api.post("/api/auth/login", { email, password });
     const { access_token, user } = res.data;
     localStorage.setItem("token", access_token);
     setToken(access_token);
     setCurrentUser(user);
     return user;
+  };
+
+  const register = async (formData) => {
+    const res = await api.post("/api/auth/register", formData);
+    return res.data;
   };
 
   const logout = () => {
@@ -43,7 +45,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, token, isLoading, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

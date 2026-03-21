@@ -1,125 +1,141 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
-  Box, Typography, Tabs, Tab, Grid, FormControl, InputLabel, Select, MenuItem,
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { ErrorOutline, NotificationsActive, History } from '@mui/icons-material';
-import { AlertList } from '../../components/alerts/AlertList';
-import { KpiCard } from '../../components/common/KpiCard';
-import { brandTokens } from '../../theme';
-import { fetchAlerts, acknowledgeAlert, resolveAlert } from '../../api/alerts';
-import { fetchZones } from '../../api/zones';
+  Box, Tabs, Tab, Typography, CircularProgress,
+  Alert as MuiAlert, Chip, Button, Stack, MenuItem,
+  TextField, Snackbar,
+} from "@mui/material";
+import { fetchAlerts, acknowledgeAlert, resolveAlert } from "../../api/alerts";
+import AlertList from "../../components/alerts/AlertList";
+import { useAuth } from "../../context/AuthContext";
 
-const AlertsPage = () => {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
-  const [allAlerts, setAllAlerts] = useState([]);
-  const [zones, setZones] = useState([]);
-  const [filters, setFilters] = useState({ zone: '', riskLevel: '' });
+const STATUS_TABS = ["active", "acknowledged", "resolved"];
 
-  useEffect(() => {
-    fetchAlerts().then(setAllAlerts).catch(console.error);
-    fetchZones().then(setZones).catch(console.error);
-  }, []);
+export default function AlertsPage() {
+  const { currentUser } = useAuth();
+  const canAct = ["admin", "safety_officer"].includes(currentUser?.role);
 
-  const TAB_STATUSES = ['active', 'acknowledged', 'resolved'];
-  const currentStatus = TAB_STATUSES[tab];
+  const [tabIndex,  setTabIndex]  = useState(0);
+  const [alerts,    setAlerts]    = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
+  const [district,  setDistrict]  = useState("");
+  const [riskLevel, setRiskLevel] = useState("");
+  const [toast,     setToast]     = useState("");
 
-  const filteredAlerts = useMemo(() => {
-    return allAlerts.filter((a) => {
-      if (a.status !== currentStatus) return false;
-      if (filters.zone && a.zone_id !== filters.zone) return false;
-      if (filters.riskLevel && a.risk_level !== filters.riskLevel) return false;
-      return true;
-    });
-  }, [allAlerts, currentStatus, filters]);
+  const currentStatus = STATUS_TABS[tabIndex];
 
-  const summary = useMemo(() => ({
-    active: allAlerts.filter((a) => a.status === 'active').length,
-    critical: allAlerts.filter((a) => a.status === 'active' && a.risk_level === 'red').length,
-    resolvedToday: allAlerts.filter((a) => a.status === 'resolved').length,
-  }), [allAlerts]);
+  const loadAlerts = useCallback(() => {
+    setLoading(true);
+    const params = { status: currentStatus };
+    if (district)  params.district   = district;
+    if (riskLevel) params.risk_level = riskLevel;
+    fetchAlerts(params)
+      .then(setAlerts)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [currentStatus, district, riskLevel]);
 
-  // ✅ FIX: added missing closing } for both functions
+  useEffect(() => { loadAlerts(); }, [loadAlerts]);
+
   const handleAcknowledge = async (id) => {
     try {
       await acknowledgeAlert(id);
-    } catch {
-      // fallback
-    } finally {
-      setAllAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status: 'acknowledged' } : a));
-    }
-  }; // ✅ properly closed
+      setToast("Alert acknowledged");
+      loadAlerts();
+    } catch { setError("Failed to acknowledge alert"); }
+  };
 
   const handleResolve = async (id) => {
     try {
       await resolveAlert(id);
-    } catch {
-      // fallback
-    } finally {
-      setAllAlerts((prev) => prev.map((a) => a.id === id ? { ...a, status: 'resolved' } : a));
-    }
-  }; // ✅ properly closed
-
-  const handleViewMap = () => navigate('/map');
+      setToast("Alert resolved");
+      loadAlerts();
+    } catch { setError("Failed to resolve alert"); }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" fontWeight={700} mb={3}>Alerts</Typography>
-
-      {/* Summary KPIs */}
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} md={4}>
-          <KpiCard label="Active Alerts" value={summary.active} icon={<NotificationsActive />} color={brandTokens?.risk?.orange || '#f97316'} />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <KpiCard label="Critical Alerts" value={summary.critical} icon={<ErrorOutline />} color={brandTokens?.risk?.red || '#ef4444'} />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <KpiCard label="Resolved" value={summary.resolvedToday} icon={<History />} color={brandTokens?.risk?.green || '#22c55e'} />
-        </Grid>
-      </Grid>
-
-      {/* Tabs */}
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tab label="Active" />
-        <Tab label="Acknowledged" />
-        <Tab label="Resolved" />
-      </Tabs>
+      <Typography variant="h5" fontWeight={700} color="white" mb={3}>
+        Alerts
+      </Typography>
 
       {/* Filters */}
-      <Grid container spacing={2} mb={2}>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Zone</InputLabel>
-            <Select value={filters.zone} label="Zone" onChange={(e) => setFilters((p) => ({ ...p, zone: e.target.value }))}>
-              <MenuItem value="">All Zones</MenuItem>
-              {zones.map((z) => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Risk Level</InputLabel>
-            <Select value={filters.riskLevel} label="Risk Level" onChange={(e) => setFilters((p) => ({ ...p, riskLevel: e.target.value }))}>
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="red">Critical</MenuItem>
-              <MenuItem value="orange">High</MenuItem>
-              <MenuItem value="yellow">Caution</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
+      <Stack direction="row" spacing={2} mb={3} flexWrap="wrap">
+        <TextField
+          select label="District" size="small" value={district}
+          onChange={e => setDistrict(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="">All Districts</MenuItem>
+          {["Nagpur","Chandrapur","Gadchiroli","Yavatmal","Amravati"].map(d => (
+            <MenuItem key={d} value={d}>{d}</MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select label="Risk Level" size="small" value={riskLevel}
+          onChange={e => setRiskLevel(e.target.value)}
+          sx={{ minWidth: 140 }}
+        >
+          <MenuItem value="">All Levels</MenuItem>
+          {["red","orange","yellow","green"].map(r => (
+            <MenuItem key={r} value={r} sx={{ textTransform: "capitalize" }}>{r}</MenuItem>
+          ))}
+        </TextField>
+        {(district || riskLevel) && (
+          <Button size="small" onClick={() => { setDistrict(""); setRiskLevel(""); }}>
+            Clear
+          </Button>
+        )}
+      </Stack>
 
-      {/* Alert List */}
-      <AlertList
-        alerts={filteredAlerts}
-        onAcknowledge={handleAcknowledge}
-        onResolve={handleResolve}
-        onViewMap={handleViewMap}
+      {/* Tabs */}
+      <Tabs
+        value={tabIndex}
+        onChange={(_, v) => setTabIndex(v)}
+        sx={{ mb: 3, borderBottom: "1px solid #222" }}
+      >
+        {STATUS_TABS.map((s, i) => (
+          <Tab
+            key={s}
+            label={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <span style={{ textTransform: "capitalize" }}>{s}</span>
+                {i === tabIndex && (
+                  <Chip label={alerts.length} size="small" color="primary" />
+                )}
+              </Stack>
+            }
+          />
+        ))}
+      </Tabs>
+
+      {/* Content */}
+      {error && <MuiAlert severity="error" sx={{ mb: 2 }}>{error}</MuiAlert>}
+
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress />
+        </Box>
+      ) : alerts.length === 0 ? (
+        <Typography color="text.secondary" textAlign="center" py={8}>
+          No {currentStatus} alerts found.
+        </Typography>
+      ) : (
+        <AlertList
+          alerts={alerts}
+          canAct={canAct}
+          currentStatus={currentStatus}
+          onAcknowledge={handleAcknowledge}
+          onResolve={handleResolve}
+        />
+      )}
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast("")}
+        message={toast}
       />
     </Box>
   );
-};
-
-export default AlertsPage;
+}

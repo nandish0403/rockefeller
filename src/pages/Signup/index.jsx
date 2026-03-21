@@ -1,25 +1,43 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   Box, Card, CardContent, TextField, Button,
-  Typography, Alert, CircularProgress, MenuItem
+  Typography, Alert, CircularProgress, MenuItem,
 } from "@mui/material";
+import { Shield as ShieldIcon } from "@mui/icons-material";
+
+
+const ROLES = [
+  { value: "field_worker",    label: "Field Worker" },
+  { value: "safety_officer",  label: "Safety Officer" },
+  { value: "admin",           label: "Admin" },
+];
+
+const DISTRICTS = [
+  "Nagpur", "Chandrapur", "Gadchiroli", "Yavatmal",
+  "Amravati", "Bhandara", "Gondia", "Wardha",
+];
 
 export default function Signup() {
+  const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "field_worker", district: "" });
-  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    name: "", email: "", password: "",
+    role: "field_worker", district: "",
+  });
+  const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await axios.post("http://localhost:8000/api/auth/register", form);
+      await register(form);
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.detail || "Registration failed.");
@@ -29,65 +47,78 @@ export default function Signup() {
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "#0f172a" }}>
-      <Card sx={{ width: 420, bgcolor: "#1e293b", color: "white", borderRadius: 3 }}>
+    <Box sx={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      bgcolor: "#0a0a0a",
+      px: 2,
+      py: 4,
+    }}>
+      <Card sx={{ width: "100%", maxWidth: 460, bgcolor: "#141414", border: "1px solid #222" }}>
         <CardContent sx={{ p: 4 }}>
-          <Typography variant="h5" fontWeight={700} mb={1} color="white">Create Account</Typography>
-          <Typography variant="body2" color="grey.400" mb={3}>GeoAlert — Mine Safety Dashboard</Typography>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 4 }}>
+            <ShieldIcon sx={{ color: "#e53935", fontSize: 32 }} />
+            <Typography variant="h5" fontWeight={700} color="white">
+              Rockefeller
+            </Typography>
+          </Box>
+
+          <Typography variant="h6" color="white" fontWeight={600} mb={0.5}>
+            Create account
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Register as a monitoring team member
+          </Typography>
 
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-          <form onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleSubmit}>
             <TextField
-              fullWidth label="Full Name" name="name" value={form.name}
-              onChange={handleChange} required sx={{ mb: 2 }}
-              InputLabelProps={{ style: { color: "#94a3b8" } }}
-              InputProps={{ style: { color: "white" } }}
+              label="Full Name" name="name" fullWidth required
+              value={form.name} onChange={handleChange} sx={{ mb: 2 }}
             />
             <TextField
-              fullWidth label="Email" name="email" type="email" value={form.email}
-              onChange={handleChange} required sx={{ mb: 2 }}
-              InputLabelProps={{ style: { color: "#94a3b8" } }}
-              InputProps={{ style: { color: "white" } }}
+              label="Email" name="email" type="email" fullWidth required
+              value={form.email} onChange={handleChange} sx={{ mb: 2 }}
             />
             <TextField
-              fullWidth label="Password" name="password" type="password" value={form.password}
-              onChange={handleChange} required sx={{ mb: 2 }}
-              InputLabelProps={{ style: { color: "#94a3b8" } }}
-              InputProps={{ style: { color: "white" } }}
+              label="Password" name="password" type="password" fullWidth required
+              value={form.password} onChange={handleChange} sx={{ mb: 2 }}
             />
             <TextField
-              fullWidth select label="Role" name="role" value={form.role}
-              onChange={handleChange} sx={{ mb: 2 }}
-              InputLabelProps={{ style: { color: "#94a3b8" } }}
-              InputProps={{ style: { color: "white" } }}
-              SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: "#1e293b", color: "white" } } } }}
+              select label="Role" name="role" fullWidth required
+              value={form.role} onChange={handleChange} sx={{ mb: 2 }}
             >
-              <MenuItem value="field_worker">Field Worker</MenuItem>
-              <MenuItem value="safety_officer">Safety Officer</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
+              {ROLES.map(r => (
+                <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
+              ))}
             </TextField>
             <TextField
-              fullWidth label="District" name="district" value={form.district}
-              onChange={handleChange} sx={{ mb: 3 }}
-              InputLabelProps={{ style: { color: "#94a3b8" } }}
-              InputProps={{ style: { color: "white" } }}
-            />
+              select label="District" name="district" fullWidth
+              value={form.district} onChange={handleChange} sx={{ mb: 3 }}
+            >
+              {DISTRICTS.map(d => (
+                <MenuItem key={d} value={d}>{d}</MenuItem>
+              ))}
+            </TextField>
+
             <Button
-              fullWidth type="submit" variant="contained" size="large"
+              type="submit" variant="contained" fullWidth size="large"
               disabled={loading}
-              sx={{ bgcolor: "#ef4444", "&:hover": { bgcolor: "#dc2626" }, fontWeight: 700, mb: 2 }}
+              sx={{ bgcolor: "#e53935", "&:hover": { bgcolor: "#c62828" }, mb: 2 }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Create Account"}
+              {loading ? <CircularProgress size={22} color="inherit" /> : "Create Account"}
             </Button>
-            <Button
-              fullWidth variant="text"
-              onClick={() => navigate("/login")}
-              sx={{ color: "#94a3b8", textTransform: "none" }}
-            >
-              Already have an account? Login
-            </Button>
-          </form>
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            Already have an account?{" "}
+            <Link to="/login" style={{ color: "#e53935" }}>Sign in</Link>
+          </Typography>
+
         </CardContent>
       </Card>
     </Box>

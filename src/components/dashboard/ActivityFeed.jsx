@@ -1,58 +1,58 @@
-import React from 'react';
-import { List, ListItem, ListItemIcon, ListItemText, Typography, Box } from '@mui/material';
+import React from "react";
+import {
+  List, ListItem, ListItemIcon, ListItemText, Typography, Box,
+} from "@mui/material";
 import {
   Description as ReportIcon,
   Explore as BlastIcon,
   NotificationsActive as AlertIcon,
   SwapVert as ZoneIcon,
-} from '@mui/icons-material';
-import { brandTokens } from '../../theme';
+} from "@mui/icons-material";
+import { brandTokens } from "../../theme";
+import { formatTimeAgo } from "../../utils/formatUtils";
 
 const ICON_MAP = {
-  report: { icon: <ReportIcon fontSize="small" />, color: brandTokens.brand.accent },
-  blast: { icon: <BlastIcon fontSize="small" />, color: brandTokens.risk.orange },
-  alert: { icon: <AlertIcon fontSize="small" />, color: brandTokens.risk.yellow },
-  zone: { icon: <ZoneIcon fontSize="small" />, color: brandTokens.risk.red },
+  report: { icon: <ReportIcon />, color: brandTokens.brand?.accent  ?? "#2196f3" },
+  blast:  { icon: <BlastIcon />,  color: brandTokens.risk?.orange   ?? "#ff9800" },
+  alert:  { icon: <AlertIcon />,  color: brandTokens.risk?.yellow   ?? "#ffeb3b" },
+  zone:   { icon: <ZoneIcon />,   color: brandTokens.risk?.red      ?? "#f44336" },
 };
 
-export const ActivityFeed = ({ items }) => {
+export const ActivityFeed = ({ items = [] }) => {   // ✅ default to [] — never undefined
+  if (!items.length) {
+    return (
+      <Typography color="text.secondary" variant="body2" sx={{ py: 3, textAlign: "center" }}>
+        No recent activity
+      </Typography>
+    );
+  }
+
   return (
-    <List disablePadding>
-      {items.map((item) => {
-        const config = ICON_MAP[item.type] || ICON_MAP.report;
+    <List dense disablePadding>
+      {items.map((item, i) => {
+        const config = ICON_MAP[item.type] || ICON_MAP.alert;
         return (
-          <ListItem
-            key={item.id}
-            sx={{
-              px: 0,
-              py: 1,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              '&:last-child': { borderBottom: 0 },
-            }}
-          >
+          <ListItem key={i} sx={{ px: 0, borderBottom: "1px solid #1a1a1a" }}>
             <ListItemIcon sx={{ minWidth: 36 }}>
-              <Box
-                sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: `${config.color}14`,
-                  color: config.color,
-                }}
-              >
-                {config.icon}
-              </Box>
+              <Box sx={{ color: config.color }}>{config.icon}</Box>
             </ListItemIcon>
             <ListItemText
-              primary={item.text}
-              secondary={item.time}
-              primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 400 }}
-              secondaryTypographyProps={{ fontSize: '0.7rem' }}
+              primary={
+                <Typography variant="body2" color="white" fontWeight={500}>
+                  {item.title}
+                </Typography>
+              }
+              secondary={
+                <Typography variant="caption" color="text.secondary">
+                  {item.subtitle}
+                </Typography>
+              }
             />
+            {item.time && (
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 1, whiteSpace: "nowrap" }}>
+                {formatTimeAgo(item.time)}
+              </Typography>
+            )}
           </ListItem>
         );
       })}

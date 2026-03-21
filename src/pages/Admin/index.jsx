@@ -1,91 +1,91 @@
-import React from 'react';
-import { Box, Typography, Grid, Card, CardContent, Button, TextField, Chip, Avatar } from '@mui/material';
-import { CloudUpload, Tune, Group, History } from '@mui/icons-material';
-import { SectionCard } from '../../components/common/SectionCard';
-import { DataTable } from '../../components/common/DataTable';
-import { StatusChip } from '../../components/common/StatusChip';
-import { zones } from '../../data/zones';
-import { users } from '../../data/users';
+import { useState, useEffect } from "react";
+import {
+  Box, Typography, Grid, CircularProgress, Alert,
+  Card, CardContent, Chip, Stack, Divider,
+} from "@mui/material";
+import { fetchZones } from "../../api/zones";
+import api from "../../api/axios";
+import { useAuth } from "../../context/AuthContext";
 
-const DATASET_CARDS = [
-  { title: 'Historical Landslides CSV', icon: <CloudUpload />, desc: 'Upload past landslide event records' },
-  { title: 'Blast Log CSV', icon: <CloudUpload />, desc: 'Upload blast operation records' },
-  { title: 'Soil Conditions CSV', icon: <CloudUpload />, desc: 'Upload soil analysis data by zone' },
-  { title: 'Weather/Rainfall CSV', icon: <CloudUpload />, desc: 'Upload meteorological records' },
-  { title: 'Mine Zone GeoJSON', icon: <CloudUpload />, desc: 'Upload zone polygon boundaries' },
-];
+export default function Admin() {
+  const { currentUser } = useAuth();
+  const [zones,   setZones]   = useState([]);
+  const [users,   setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
-const AdminPage = () => {
-  const zoneColumns = [
-    { id: 'name', label: 'Zone Name' },
-    { id: 'mineName', label: 'Mine' },
-    { id: 'district', label: 'District' },
-    { id: 'status', label: 'Status', render: (val) => <StatusChip status={val === 'Critical' ? 'active' : val === 'Warning' ? 'acknowledged' : 'resolved'} /> },
-  ];
+  useEffect(() => {
+    Promise.all([
+      fetchZones(),
+      api.get("/api/auth/users").then(r => r.data),
+    ])
+      .then(([z, u]) => { setZones(z); setUsers(u); })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const userColumns = [
-    { id: 'name', label: 'Name', render: (val, row) => (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Avatar src={row.avatar} sx={{ width: 28, height: 28 }} />
-        {val}
-      </Box>
-    )},
-    { id: 'role', label: 'Role', render: (val) => <Chip label={val} size="small" sx={{ fontWeight: 500, fontSize: '0.7rem' }} /> },
-    { id: 'district', label: 'District' },
-  ];
+  if (loading) return (
+    <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+      <CircularProgress />
+    </Box>
+  );
 
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>Admin Panel</Typography>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" fontWeight={700} color="white" mb={1}>
+        Admin Panel
+      </Typography>
+      <Typography variant="body2" color="text.secondary" mb={3}>
+        Logged in as {currentUser?.name} · {currentUser?.role}
+      </Typography>
 
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, fontSize: '1rem' }}>Dataset Uploads</Typography>
-      <Grid container spacing={2} sx={{ mb: 4 }}>
-        {DATASET_CARDS.map((ds) => (
-          <Grid item xs={12} sm={6} md={4} key={ds.title}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                <Box sx={{ color: 'primary.main', mb: 1 }}>{ds.icon}</Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>{ds.title}</Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>{ds.desc}</Typography>
-                <Button variant="outlined" size="small" startIcon={<CloudUpload />} disabled>Upload</Button>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {/* Summary Cards */}
+      <Grid container spacing={2} mb={4}>
+        {[
+          { label: "Total Zones",  value: zones.length },
+          { label: "Red Zones",    value: zones.filter(z => z.risk_level === "red").length },
+          { label: "Total Users",  value: users.length },
+          { label: "Field Workers", value: users.filter(u => u.role === "field_worker").length },
+        ].map(stat => (
+          <Grid item xs={6} sm={3} key={stat.label}>
+            <Card sx={{ bgcolor: "#141414", border: "1px solid #222" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Typography variant="h4" color="white" fontWeight={700}>{stat.value}</Typography>
+                <Typography variant="body2" color="text.secondary">{stat.label}</Typography>
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, fontSize: '1rem' }}>Threshold Settings</Typography>
-      <SectionCard sx={{ mb: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={6} sm={3}>
-            <TextField label="Yellow Threshold (mm)" defaultValue="80" size="small" fullWidth />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <TextField label="Orange Threshold (mm)" defaultValue="150" size="small" fullWidth />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <TextField label="Red Threshold (mm)" defaultValue="200" size="small" fullWidth />
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <TextField label="Blast Escalation Count" defaultValue="7" size="small" fullWidth />
-          </Grid>
-        </Grid>
-      </SectionCard>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <SectionCard title="Zone Management" action={<Chip icon={<Tune />} label={`${zones.length} Zones`} size="small" />}>
-            <DataTable columns={zoneColumns} rows={zones} />
-          </SectionCard>
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <SectionCard title="User Roles" action={<Chip icon={<Group />} label={`${users.length} Users`} size="small" />}>
-            <DataTable columns={userColumns} rows={users} />
-          </SectionCard>
-        </Grid>
-      </Grid>
+      {/* Users Table */}
+      <Typography variant="h6" color="white" fontWeight={600} mb={2}>Users</Typography>
+      <Card sx={{ bgcolor: "#141414", border: "1px solid #222" }}>
+        {users.map((u, i) => (
+          <Box key={u.id}>
+            <Box sx={{ px: 3, py: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Box>
+                <Typography color="white" fontWeight={500}>{u.name}</Typography>
+                <Typography variant="body2" color="text.secondary">{u.email}</Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                {u.district && <Chip label={u.district} size="small" variant="outlined" />}
+                <Chip
+                  label={u.role?.replace("_", " ")}
+                  size="small"
+                  sx={{
+                    bgcolor: { admin: "#e53935", safety_officer: "#ff9800", field_worker: "#4caf50" }[u.role],
+                    color: "white", textTransform: "capitalize",
+                  }}
+                />
+              </Stack>
+            </Box>
+            {i < users.length - 1 && <Divider sx={{ borderColor: "#222" }} />}
+          </Box>
+        ))}
+      </Card>
     </Box>
   );
-};
-
-export default AdminPage;
+}

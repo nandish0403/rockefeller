@@ -1,111 +1,59 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useEffect } from "react";
 import {
-  Box, Typography, ToggleButton, ToggleButtonGroup, Grid, Chip,
-  FormControl, InputLabel, Select, MenuItem,
-} from '@mui/material';
-import { ViewList, ViewModule } from '@mui/icons-material';
-import { reports as reportData } from '../../data/reports';
-import { zones } from '../../data/zones';
-import { ReportCard } from '../../components/reports/ReportCard';
-import { KpiCard } from '../../components/common/KpiCard';
-import { brandTokens } from '../../theme';
-import { Description, HourglassEmpty, ErrorOutline } from '@mui/icons-material';
+  Box, Typography, MenuItem, TextField,
+  Stack, CircularProgress, Alert,
+} from "@mui/material";
+import { fetchReports } from "../../api/reports";
+import { fetchZones } from "../../api/zones";
+import { ReportCard } from "../../components/reports/ReportCard";
 
-const ReportsPage = () => {
-  const [view, setView] = useState('list');
-  const [filters, setFilters] = useState({ zone: '', severity: '', status: '' });
+export default function Reports() {
+  const [reports, setReports] = useState([]);
+  const [zones,   setZones]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+  const [zoneFilter, setZoneFilter] = useState("");
 
-  const filteredReports = useMemo(() => {
-    return reportData.filter((r) => {
-      if (filters.zone && r.zoneId !== filters.zone) return false;
-      if (filters.severity && r.severity !== filters.severity) return false;
-      if (filters.status && r.reviewStatus !== filters.status) return false;
-      return true;
-    });
-  }, [filters]);
+  useEffect(() => {
+    Promise.all([fetchReports(), fetchZones()])
+      .then(([r, z]) => { setReports(r); setZones(z); })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const summary = useMemo(() => ({
-    total: reportData.length,
-    pending: reportData.filter((r) => r.reviewStatus === 'pending').length,
-    critical: reportData.filter((r) => r.severity === 'critical').length,
-  }), []);
+  const filtered = zoneFilter
+    ? reports.filter(r => r.zone_id === zoneFilter)
+    : reports;
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600 }}>Field Reports</Typography>
-        <ToggleButtonGroup
-          value={view}
-          exclusive
-          onChange={(_, v) => v && setView(v)}
-          size="small"
-        >
-          <ToggleButton value="list"><ViewList fontSize="small" /></ToggleButton>
-          <ToggleButton value="gallery"><ViewModule fontSize="small" /></ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" fontWeight={700} color="white" mb={3}>
+        Field Reports
+      </Typography>
 
-      {/* Summary Strip */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={4}>
-          <KpiCard title="Total" value={summary.total} icon={<Description />} color={brandTokens.brand.accent} />
-        </Grid>
-        <Grid item xs={4}>
-          <KpiCard title="Pending" value={summary.pending} icon={<HourglassEmpty />} color={brandTokens.risk.yellow} />
-        </Grid>
-        <Grid item xs={4}>
-          <KpiCard title="Critical" value={summary.critical} icon={<ErrorOutline />} color={brandTokens.risk.red} />
-        </Grid>
-      </Grid>
+      <Stack direction="row" spacing={2} mb={3}>
+        <TextField select label="Filter by Zone" size="small" value={zoneFilter}
+          onChange={e => setZoneFilter(e.target.value)} sx={{ minWidth: 220 }}>
+          <MenuItem value="">All Zones</MenuItem>
+          {zones.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
+        </TextField>
+      </Stack>
 
-      {/* Filters */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>Zone</InputLabel>
-          <Select value={filters.zone} label="Zone" onChange={(e) => setFilters((p) => ({ ...p, zone: e.target.value }))}>
-            <MenuItem value="">All Zones</MenuItem>
-            {zones.map((z) => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Severity</InputLabel>
-          <Select value={filters.severity} label="Severity" onChange={(e) => setFilters((p) => ({ ...p, severity: e.target.value }))}>
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="critical">Critical</MenuItem>
-            <MenuItem value="high">High</MenuItem>
-            <MenuItem value="medium">Medium</MenuItem>
-            <MenuItem value="low">Low</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Status</InputLabel>
-          <Select value={filters.status} label="Status" onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}>
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="pending">Pending</MenuItem>
-            <MenuItem value="reviewed">Reviewed</MenuItem>
-            <MenuItem value="dismissed">Dismissed</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Reports */}
-      {view === 'list' ? (
-        <Box>
-          {filteredReports.map((r) => (
-            <ReportCard key={r.id} report={r} variant="list" />
-          ))}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress />
         </Box>
+      ) : filtered.length === 0 ? (
+        <Typography color="text.secondary" textAlign="center" py={8}>
+          No reports found.
+        </Typography>
       ) : (
-        <Grid container spacing={2}>
-          {filteredReports.map((r) => (
-            <Grid item xs={12} sm={6} md={4} key={r.id}>
-              <ReportCard report={r} variant="gallery" />
-            </Grid>
-          ))}
-        </Grid>
+        <Stack spacing={2}>
+          {filtered.map(r => <ReportCard key={r.id} report={r} />)}
+        </Stack>
       )}
     </Box>
   );
-};
-
-export default ReportsPage;
+}

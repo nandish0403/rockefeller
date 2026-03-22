@@ -13,6 +13,7 @@ import Upload from "../pages/Upload";
 import Analytics from "../pages/Analytics";
 import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
+import FieldReportPage from "../pages/FieldReport";
 
 const router = createBrowserRouter([
   // Public routes
@@ -38,6 +39,8 @@ const router = createBrowserRouter([
       { path: "upload",           element: <Upload /> },
       { path: "analytics",        element: <Analytics /> },
       { path: "profile",          element: <Profile /> },
+      { path:"field-report",      element: <FieldReportPage/>},
+
       // Admin-only — any non-admin hitting /admin gets redirected to /dashboard
       {
         path: "admin",

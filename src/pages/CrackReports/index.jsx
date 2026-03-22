@@ -419,6 +419,7 @@ const STEPS = ["Zone", "Details", "Media", "Review"];
 function FieldWorkerUpload() {
   const { currentUser } = useAuth();
   const [mounted,    setMounted]    = useState(false);
+  const navigate = useNavigate();
   const [step,       setStep]       = useState(0);
   const [activeTab,  setActiveTab]  = useState("crack"); // "crack" | "field"
   const [zones,      setZones]      = useState([]);
@@ -528,7 +529,12 @@ function FieldWorkerUpload() {
             { id: "crack", icon: "running_with_errors", label: "Crack Report" },
             { id: "field", icon: "edit_document",       label: "Field Report" },
           ].map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            <button key={t.id} onClick={() =>{
+            if (t.id === "field") navigate("/field-report");  // ← CHANGE
+            else setActiveTab(t.id);    
+             }}
+            
+            style={{
               flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
               gap: 8, padding: "12px 16px", borderRadius: 2, border: "none",
               fontFamily: "Inter", fontSize: 10, fontWeight: 800,

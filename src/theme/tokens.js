@@ -1,0 +1,21 @@
+export const T = {
+  bg:           "#131313",
+  surface:      "#131313",
+  surfaceLowest:"#0e0e0e",
+  surfaceLow:   "#1c1b1b",
+  surfaceCont:  "#201f1f",
+  surfaceHigh:  "#2a2a2a",
+  surfaceBright:"#3a3939",
+  primary:      "#ffb3ad",
+  primaryCont:  "#ff5451",
+  secondary:    "#ffb95f",
+  tertiary:     "#4edea3",
+  onSurface:    "#e5e2e1",
+  onSurfaceVar: "#e4beba",
+  outlineVar:   "#5b403e",
+  glass: {
+    background: "rgba(42,42,42,0.4)",
+    backdropFilter: "blur(20px)",
+    border: "1px solid rgba(91,64,62,0.15)",
+  },
+};

@@ -21,6 +21,8 @@ async def register(body: RegisterRequest):
         role=body.role,
         district=body.district,
         zone_assigned=body.zone_assigned,
+        worker_id     = body.worker_id,    # ← ADD THIS
+        phone         = body.phone,
     )
     await user.insert()
     return {"message": "User registered successfully", "email": user.email}
@@ -58,6 +60,8 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "role": current_user.role,
         "district": current_user.district,
         "zone_assigned": current_user.zone_assigned,
+        "worker_id":    current_user.worker_id,    # ← ADD
+        "phone":        current_user.phone,   
         "avatar_url": current_user.avatar_url,
     }
 
@@ -73,6 +77,9 @@ async def list_users(current_user: User = Depends(require_admin)):
             "role": u.role,
             "district": u.district,
             "zone_assigned": u.zone_assigned,
+            "worker_id":    u.worker_id,    # ← ADD
+            "phone":        u.phone, 
+            
         }
         for u in users
     ]

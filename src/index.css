@@ -39,3 +39,11 @@ html, body, #root {
   border-radius: 8px !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
 }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #131313;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0e0e0e; }
+::-webkit-scrollbar-thumb { background: #3a3939; border-radius: 10px; }

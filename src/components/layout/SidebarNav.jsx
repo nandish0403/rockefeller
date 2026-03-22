@@ -1,179 +1,145 @@
-import React from 'react';
-import {
-  Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Box, Typography, Divider, IconButton, useTheme,
-} from '@mui/material';
-import {
-  Dashboard as DashboardIcon,
-  Map as MapIcon,
-  Assessment as AnalyticsIcon,
-  Warning as AlertsIcon,
-  CloudUpload as UploadIcon,
-  BugReport as CrackIcon,
-  Description as ReportsIcon,
-  AdminPanelSettings as AdminIcon,
-  Person as ProfileIcon,
-  ChevronLeft as CollapseIcon,
-  ChevronRight as ExpandIcon,
-} from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { brandTokens } from '../../theme';
+import { NavLink, useNavigate } from "react-router-dom";
+import { Box, Typography } from "@mui/material";
+import { useAuth } from "../../context/AuthContext";
+import { T } from "../../theme/tokens";
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { label: 'Map', icon: <MapIcon />, path: '/map' },
-  { label: 'Alerts', icon: <AlertsIcon />, path: '/alerts' },
-  { label: 'Crack Reports', icon: <CrackIcon />, path: '/crack-reports' },
-  { label: 'Reports', icon: <ReportsIcon />, path: '/reports' },
-  { label: 'Upload', icon: <UploadIcon />, path: '/upload' },
-  { label: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
-  { label: 'Admin', icon: <AdminIcon />, path: '/admin' },
-  { label: 'Profile', icon: <ProfileIcon />, path: '/profile' },
+const NAV = [
+  { label: "Dashboard",     icon: "dashboard",            to: "/dashboard" },
+  { label: "Map View",      icon: "map",                  to: "/map" },
+  { label: "Alerts",        icon: "notifications_active", to: "/alerts" },
+  { label: "Crack Reports", icon: "running_with_errors",  to: "/crack-reports" },
+  { label: "Reports",       icon: "description",          to: "/reports" },
+  { label: "Analytics",     icon: "analytics",            to: "/analytics" },
+  { label: "Upload",        icon: "upload_file",          to: "/upload" },
 ];
 
-export const SidebarNav = ({ open, onToggle, isMobile, width, collapsedWidth }) => {
+export default function SidebarNav() {
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const theme = useTheme();
 
-  const currentWidth = open ? width : collapsedWidth;
+  return (
+    <Box sx={{
+      position: "fixed", left: 0, top: 0,
+      width: 256, height: "100vh",
+      bgcolor: "#0E0E0E",
+      borderRight: "1px solid rgba(91,64,62,0.15)",
+      display: "flex", flexDirection: "column",
+      py: 3, zIndex: 50,
+    }}>
+      {/* Logo */}
+      <Box sx={{ px: 3, mb: 5 }}>
+        <Typography sx={{
+          fontSize: 20, fontWeight: 700,
+          letterSpacing: "-0.05em", color: "#E5E2E1",
+          fontFamily: "Inter",
+        }}>
+          Rockefeller
+        </Typography>
+        <Typography sx={{
+          fontSize: "0.6875rem", fontWeight: 300,
+          letterSpacing: "0.1em", color: "#E4BEBA",
+          fontFamily: "Inter",
+        }}>
+          Maharashtra, India
+        </Typography>
+      </Box>
 
-  const drawerContent = (
-    <Box
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: brandTokens.brand.dark,
-        color: '#fff',
-        overflow: 'hidden',
-      }}
-    >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: open ? 'space-between' : 'center',
-          px: open ? 2 : 0,
-          py: 2,
-          minHeight: 64,
-        }}
-      >
-        {open && (
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2 }}>
-              GeoAlert
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem' }}>
-              by JM Solutions
-            </Typography>
-          </Box>
-        )}
-        {!isMobile && (
-          <IconButton onClick={onToggle} sx={{ color: '#fff' }} size="small">
-            {open ? <CollapseIcon /> : <ExpandIcon />}
-          </IconButton>
+      {/* Nav */}
+      <Box component="nav" sx={{ flex: 1 }}>
+        {NAV.map(({ label, icon, to }) => (
+          <NavLink key={to} to={to} style={{ textDecoration: "none" }}>
+            {({ isActive }) => (
+              <Box sx={{
+                display: "flex", alignItems: "center", gap: 2,
+                px: 3, py: 1.5,
+                borderLeft: isActive
+                  ? "2px solid #FFB3AD"
+                  : "2px solid transparent",
+                color:   isActive ? "#FFB3AD" : "#E4BEBA",
+                opacity: isActive ? 1 : 0.7,
+                fontSize: "0.6875rem", fontWeight: 300,
+                letterSpacing: "0.1em", fontFamily: "Inter",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                "&:hover": {
+                  bgcolor: "#201F1F",
+                  color: "#FFB3AD",
+                  opacity: 1,
+                },
+              }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
+                    fontSize: 20,
+                  }}>
+                  {icon}
+                </span>
+                {label}
+              </Box>
+            )}
+          </NavLink>
+        ))}
+
+        {/* Admin link — only for admins */}
+        {currentUser?.role === "admin" && (
+          <NavLink to="/admin" style={{ textDecoration: "none" }}>
+            {({ isActive }) => (
+              <Box sx={{
+                display: "flex", alignItems: "center", gap: 2,
+                px: 3, py: 1.5,
+                borderLeft: isActive
+                  ? "2px solid #FFB3AD"
+                  : "2px solid transparent",
+                color:   isActive ? "#FFB3AD" : "#E4BEBA",
+                opacity: isActive ? 1 : 0.7,
+                fontSize: "0.6875rem", fontWeight: 300,
+                letterSpacing: "0.1em", fontFamily: "Inter",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                "&:hover": { bgcolor: "#201F1F", color: "#FFB3AD", opacity: 1 },
+              }}>
+                <span className="material-symbols-outlined"
+                  style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
+                    fontSize: 20 }}>
+                  admin_panel_settings
+                </span>
+                Admin
+              </Box>
+            )}
+          </NavLink>
         )}
       </Box>
 
-      <Divider sx={{ borderColor: brandTokens.brand.slate }} />
-
-      <List sx={{ flexGrow: 1, pt: 1 }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
-          return (
-            <ListItemButton
-              key={item.path}
-              onClick={() => {
-                navigate(item.path);
-                if (isMobile) onToggle();
-              }}
-              sx={{
-                mx: 1,
-                mb: 0.5,
-                borderRadius: '8px',
-                minHeight: 44,
-                justifyContent: open ? 'initial' : 'center',
-                bgcolor: isActive ? brandTokens.brand.accent : 'transparent',
-                '&:hover': {
-                  bgcolor: isActive
-                    ? brandTokens.brand.accent
-                    : 'rgba(255,255,255,0.08)',
-                },
-                transition: 'background-color 0.2s',
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: open ? 2 : 0,
-                  justifyContent: 'center',
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              {open && (
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: '0.85rem',
-                    fontWeight: isActive ? 600 : 400,
-                  }}
-                />
-              )}
-            </ListItemButton>
-          );
-        })}
-      </List>
-
-      <Divider sx={{ borderColor: brandTokens.brand.slate }} />
-      <Box sx={{ p: 1.5, textAlign: 'center' }}>
-        {open && (
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
-            Phase 1 — Mock Data
-          </Typography>
-        )}
+      {/* User card */}
+      <Box sx={{ px: 3 }}>
+        <Box onClick={() => navigate("/profile")} sx={{
+          display: "flex", alignItems: "center", gap: 1.5,
+          p: 1.5, borderRadius: "4px",
+          bgcolor: "#1C1B1B", cursor: "pointer",
+          "&:hover": { bgcolor: "#2A2A2A" },
+          transition: "all 0.2s",
+        }}>
+          <Box sx={{
+            width: 32, height: 32, borderRadius: "50%",
+            bgcolor: "rgba(255,179,173,0.15)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span className="material-symbols-outlined"
+              style={{ color: "#FFB3AD", fontSize: 18 }}>
+              account_circle
+            </span>
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: 10, fontWeight: 700, color: "#E5E2E1" }}>
+              {currentUser?.name || "Guest"}
+            </Typography>
+            <Typography sx={{ fontSize: 9, color: "#E4BEBA", textTransform: "capitalize" }}>
+              {currentUser?.role || "—"}
+            </Typography>
+          </Box>
+        </Box>
       </Box>
     </Box>
   );
-
-  if (isMobile) {
-    return (
-      <Drawer
-        variant="temporary"
-        open={open}
-        onClose={onToggle}
-        ModalProps={{ keepMounted: true }}
-        sx={{
-          '& .MuiDrawer-paper': {
-            width: width,
-            border: 'none',
-          },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-    );
-  }
-
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: currentWidth,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: currentWidth,
-          border: 'none',
-          transition: 'width 0.3s ease',
-          overflowX: 'hidden',
-        },
-      }}
-    >
-      {drawerContent}
-    </Drawer>
-  );
-};
-
-export default SidebarNav;
+}

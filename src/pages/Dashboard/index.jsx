@@ -388,10 +388,10 @@ export default function DashboardPage() {
                   url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   attribution='&copy; CartoDB'
                 />
-                {zones.map(zone => zone.coordinates?.length > 0 && (
+                {zones.map(zone => zone.latlngs?.length > 0 && (
                   <Polygon
                     key={zone.id}
-                    positions={zone.coordinates}
+                    positions={zone.latlngs}
                     pathOptions={{
                       fillColor: RISK_COLORS[zone.risk_level] || T.tertiary,
                       fillOpacity: 0.4,

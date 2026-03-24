@@ -9,7 +9,6 @@ import ZoneDetails from "../pages/ZoneDetails";
 import CrackReports from "../pages/CrackReports";
 import Alerts from "../pages/Alerts";
 import Reports from "../pages/Reports";
-import Upload from "../pages/Upload";
 import Analytics from "../pages/Analytics";
 import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
@@ -36,7 +35,6 @@ const router = createBrowserRouter([
       { path: "alerts",           element: <Alerts /> },
       { path: "crack-reports",    element: <CrackReports /> },
       { path: "reports",          element: <Reports /> },
-      { path: "upload",           element: <Upload /> },
       { path: "analytics",        element: <Analytics /> },
       { path: "profile",          element: <Profile /> },
       { path:"field-report",      element: <FieldReportPage/>},

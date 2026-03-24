@@ -1,17 +1,1442 @@
 [
-  { "id": "z001", "name": "Sector A - North Pit", "mineName": "Wardha Valley Coal Mine", "district": "Nagpur", "riskLevel": "red", "riskScore": 87, "latlngs": [[20.9320, 79.0520],[20.9340, 79.0550],[20.9310, 79.0570],[20.9295, 79.0540]], "soilType": "Black Cotton Soil", "slopeAngle": 42, "lastLandslide": "2024-08-14", "blastCount7d": 12, "recentRainfall": 310, "status": "critical" },
-  { "id": "z002", "name": "Sector B - East Wall", "mineName": "Wardha Valley Coal Mine", "district": "Nagpur", "riskLevel": "orange", "riskScore": 68, "latlngs": [[20.9360, 79.0580],[20.9380, 79.0610],[20.9350, 79.0630],[20.9335, 79.0600]], "soilType": "Laterite", "slopeAngle": 35, "lastLandslide": "2024-06-22", "blastCount7d": 7, "recentRainfall": 210, "status": "warning" },
-  { "id": "z003", "name": "Deep Cut Zone 1", "mineName": "Chandrapur Open Cast Mine", "district": "Chandrapur", "riskLevel": "red", "riskScore": 92, "latlngs": [[19.9600, 79.2950],[19.9625, 79.2980],[19.9605, 79.3005],[19.9585, 79.2975]], "soilType": "Alluvial Clay", "slopeAngle": 48, "lastLandslide": "2025-01-05", "blastCount7d": 15, "recentRainfall": 380, "status": "critical" },
-  { "id": "z004", "name": "South Bench Zone", "mineName": "Chandrapur Open Cast Mine", "district": "Chandrapur", "riskLevel": "yellow", "riskScore": 45, "latlngs": [[19.9550, 79.2900],[19.9575, 79.2930],[19.9555, 79.2955],[19.9530, 79.2925]], "soilType": "Sandstone", "slopeAngle": 28, "lastLandslide": "2023-11-30", "blastCount7d": 4, "recentRainfall": 130, "status": "monitoring" },
-  { "id": "z005", "name": "Bauxite Pit Alpha", "mineName": "Ratnagiri Bauxite Mine", "district": "Ratnagiri", "riskLevel": "orange", "riskScore": 71, "latlngs": [[17.0050, 73.3180],[17.0075, 73.3210],[17.0055, 73.3235],[17.0030, 73.3205]], "soilType": "Laterite", "slopeAngle": 38, "lastLandslide": "2024-07-18", "blastCount7d": 9, "recentRainfall": 265, "status": "warning" },
-  { "id": "z006", "name": "Bauxite Pit Beta", "mineName": "Ratnagiri Bauxite Mine", "district": "Ratnagiri", "riskLevel": "yellow", "riskScore": 52, "latlngs": [[17.0090, 73.3250],[17.0115, 73.3280],[17.0095, 73.3305],[17.0070, 73.3275]], "soilType": "Red Laterite", "slopeAngle": 32, "lastLandslide": "2024-02-10", "blastCount7d": 3, "recentRainfall": 155, "status": "monitoring" },
-  { "id": "z007", "name": "Limestone Quarry North", "mineName": "Satara Limestone Mine", "district": "Satara", "riskLevel": "green", "riskScore": 18, "latlngs": [[17.6850, 74.0120],[17.6875, 74.0150],[17.6855, 74.0175],[17.6830, 74.0145]], "soilType": "Limestone Rock", "slopeAngle": 22, "lastLandslide": "2022-09-05", "blastCount7d": 2, "recentRainfall": 60, "status": "monitoring" },
-  { "id": "z008", "name": "Quarry West Face", "mineName": "Satara Limestone Mine", "district": "Satara", "riskLevel": "yellow", "riskScore": 44, "latlngs": [[17.6800, 74.0080],[17.6825, 74.0110],[17.6805, 74.0135],[17.6780, 74.0105]], "soilType": "Weathered Basalt", "slopeAngle": 30, "lastLandslide": "2023-08-20", "blastCount7d": 5, "recentRainfall": 140, "status": "monitoring" },
-  { "id": "z009", "name": "Iron Ore Zone East", "mineName": "Kolhapur Iron Mine", "district": "Kolhapur", "riskLevel": "green", "riskScore": 22, "latlngs": [[16.7050, 74.2480],[16.7075, 74.2510],[16.7055, 74.2535],[16.7030, 74.2505]], "soilType": "Ferruginous Soil", "slopeAngle": 25, "lastLandslide": "2022-06-14", "blastCount7d": 1, "recentRainfall": 45, "status": "monitoring" },
-  { "id": "z010", "name": "Iron Ore Zone West", "mineName": "Kolhapur Iron Mine", "district": "Kolhapur", "riskLevel": "orange", "riskScore": 65, "latlngs": [[16.7010, 74.2440],[16.7035, 74.2470],[16.7015, 74.2495],[16.6990, 74.2465]], "soilType": "Black Ferruginous Clay", "slopeAngle": 40, "lastLandslide": "2024-09-02", "blastCount7d": 8, "recentRainfall": 245, "status": "warning" },
-  { "id": "z011", "name": "Basalt Cut Zone A", "mineName": "Pune Basalt Quarry", "district": "Pune", "riskLevel": "yellow", "riskScore": 48, "latlngs": [[18.5150, 73.8580],[18.5175, 73.8610],[18.5155, 73.8635],[18.5130, 73.8605]], "soilType": "Basalt", "slopeAngle": 34, "lastLandslide": "2023-07-11", "blastCount7d": 6, "recentRainfall": 160, "status": "monitoring" },
-  { "id": "z012", "name": "Basalt Cut Zone B", "mineName": "Pune Basalt Quarry", "district": "Pune", "riskLevel": "green", "riskScore": 15, "latlngs": [[18.5200, 73.8640],[18.5225, 73.8670],[18.5205, 73.8695],[18.5180, 73.8665]], "soilType": "Hard Basalt Rock", "slopeAngle": 20, "lastLandslide": "2021-12-01", "blastCount7d": 0, "recentRainfall": 30, "status": "monitoring" },
-  { "id": "z013", "name": "Manganese Pit 1", "mineName": "Raigad Manganese Mine", "district": "Raigad", "riskLevel": "red", "riskScore": 83, "latlngs": [[18.3150, 73.1800],[18.3175, 73.1830],[18.3155, 73.1855],[18.3130, 73.1825]], "soilType": "Alluvial Clay", "slopeAngle": 45, "lastLandslide": "2025-02-20", "blastCount7d": 11, "recentRainfall": 340, "status": "critical" },
-  { "id": "z014", "name": "Manganese Pit 2", "mineName": "Raigad Manganese Mine", "district": "Raigad", "riskLevel": "orange", "riskScore": 70, "latlngs": [[18.3100, 73.1760],[18.3125, 73.1790],[18.3105, 73.1815],[18.3080, 73.1785]], "soilType": "Red Laterite Clay", "slopeAngle": 37, "lastLandslide": "2024-10-15", "blastCount7d": 8, "recentRainfall": 230, "status": "warning" },
-  { "id": "z015", "name": "Yavatmal Coal Section", "mineName": "Yavatmal Coal Block", "district": "Yavatmal", "riskLevel": "green", "riskScore": 25, "latlngs": [[20.3890, 78.1200],[20.3915, 78.1230],[20.3895, 78.1255],[20.3870, 78.1225]], "soilType": "Black Cotton Soil", "slopeAngle": 24, "lastLandslide": "2022-04-08", "blastCount7d": 2, "recentRainfall": 55, "status": "monitoring" }
+  {
+    "id": "z001",
+    "name": "Sector A - North Pit",
+    "mineName": "Wardha Valley Coal Mine",
+    "district": "Nagpur",
+    "riskLevel": "red",
+    "riskScore": 87,
+    "latlngs": [
+      [
+        20.932,
+        79.052
+      ],
+      [
+        20.934,
+        79.055
+      ],
+      [
+        20.931,
+        79.057
+      ],
+      [
+        20.9295,
+        79.054
+      ]
+    ],
+    "soilType": "Black Cotton Soil",
+    "slopeAngle": 42,
+    "lastLandslide": "2024-08-14",
+    "blastCount7d": 12,
+    "recentRainfall": 310,
+    "status": "critical"
+  },
+  {
+    "id": "z002",
+    "name": "Sector B - East Wall",
+    "mineName": "Wardha Valley Coal Mine",
+    "district": "Nagpur",
+    "riskLevel": "orange",
+    "riskScore": 68,
+    "latlngs": [
+      [
+        20.936,
+        79.058
+      ],
+      [
+        20.938,
+        79.061
+      ],
+      [
+        20.935,
+        79.063
+      ],
+      [
+        20.9335,
+        79.06
+      ]
+    ],
+    "soilType": "Laterite",
+    "slopeAngle": 35,
+    "lastLandslide": "2024-06-22",
+    "blastCount7d": 7,
+    "recentRainfall": 210,
+    "status": "warning"
+  },
+  {
+    "id": "z003",
+    "name": "Deep Cut Zone 1",
+    "mineName": "Chandrapur Open Cast Mine",
+    "district": "Chandrapur",
+    "riskLevel": "red",
+    "riskScore": 92,
+    "latlngs": [
+      [
+        19.96,
+        79.295
+      ],
+      [
+        19.9625,
+        79.298
+      ],
+      [
+        19.9605,
+        79.3005
+      ],
+      [
+        19.9585,
+        79.2975
+      ]
+    ],
+    "soilType": "Alluvial Clay",
+    "slopeAngle": 48,
+    "lastLandslide": "2025-01-05",
+    "blastCount7d": 15,
+    "recentRainfall": 380,
+    "status": "critical"
+  },
+  {
+    "id": "z004",
+    "name": "South Bench Zone",
+    "mineName": "Chandrapur Open Cast Mine",
+    "district": "Chandrapur",
+    "riskLevel": "yellow",
+    "riskScore": 45,
+    "latlngs": [
+      [
+        19.955,
+        79.29
+      ],
+      [
+        19.9575,
+        79.293
+      ],
+      [
+        19.9555,
+        79.2955
+      ],
+      [
+        19.953,
+        79.2925
+      ]
+    ],
+    "soilType": "Sandstone",
+    "slopeAngle": 28,
+    "lastLandslide": "2023-11-30",
+    "blastCount7d": 4,
+    "recentRainfall": 130,
+    "status": "monitoring"
+  },
+  {
+    "id": "z005",
+    "name": "Bauxite Pit Alpha",
+    "mineName": "Ratnagiri Bauxite Mine",
+    "district": "Ratnagiri",
+    "riskLevel": "orange",
+    "riskScore": 71,
+    "latlngs": [
+      [
+        17.005,
+        73.318
+      ],
+      [
+        17.0075,
+        73.321
+      ],
+      [
+        17.0055,
+        73.3235
+      ],
+      [
+        17.003,
+        73.3205
+      ]
+    ],
+    "soilType": "Laterite",
+    "slopeAngle": 38,
+    "lastLandslide": "2024-07-18",
+    "blastCount7d": 9,
+    "recentRainfall": 265,
+    "status": "warning"
+  },
+  {
+    "id": "z006",
+    "name": "Bauxite Pit Beta",
+    "mineName": "Ratnagiri Bauxite Mine",
+    "district": "Ratnagiri",
+    "riskLevel": "yellow",
+    "riskScore": 52,
+    "latlngs": [
+      [
+        17.009,
+        73.325
+      ],
+      [
+        17.0115,
+        73.328
+      ],
+      [
+        17.0095,
+        73.3305
+      ],
+      [
+        17.007,
+        73.3275
+      ]
+    ],
+    "soilType": "Red Laterite",
+    "slopeAngle": 32,
+    "lastLandslide": "2024-02-10",
+    "blastCount7d": 3,
+    "recentRainfall": 155,
+    "status": "monitoring"
+  },
+  {
+    "id": "z007",
+    "name": "Limestone Quarry North",
+    "mineName": "Satara Limestone Mine",
+    "district": "Satara",
+    "riskLevel": "green",
+    "riskScore": 18,
+    "latlngs": [
+      [
+        17.685,
+        74.012
+      ],
+      [
+        17.6875,
+        74.015
+      ],
+      [
+        17.6855,
+        74.0175
+      ],
+      [
+        17.683,
+        74.0145
+      ]
+    ],
+    "soilType": "Limestone Rock",
+    "slopeAngle": 22,
+    "lastLandslide": "2022-09-05",
+    "blastCount7d": 2,
+    "recentRainfall": 60,
+    "status": "monitoring"
+  },
+  {
+    "id": "z008",
+    "name": "Quarry West Face",
+    "mineName": "Satara Limestone Mine",
+    "district": "Satara",
+    "riskLevel": "yellow",
+    "riskScore": 44,
+    "latlngs": [
+      [
+        17.68,
+        74.008
+      ],
+      [
+        17.6825,
+        74.011
+      ],
+      [
+        17.6805,
+        74.0135
+      ],
+      [
+        17.678,
+        74.0105
+      ]
+    ],
+    "soilType": "Weathered Basalt",
+    "slopeAngle": 30,
+    "lastLandslide": "2023-08-20",
+    "blastCount7d": 5,
+    "recentRainfall": 140,
+    "status": "monitoring"
+  },
+  {
+    "id": "z009",
+    "name": "Iron Ore Zone East",
+    "mineName": "Kolhapur Iron Mine",
+    "district": "Kolhapur",
+    "riskLevel": "green",
+    "riskScore": 22,
+    "latlngs": [
+      [
+        16.705,
+        74.248
+      ],
+      [
+        16.7075,
+        74.251
+      ],
+      [
+        16.7055,
+        74.2535
+      ],
+      [
+        16.703,
+        74.2505
+      ]
+    ],
+    "soilType": "Ferruginous Soil",
+    "slopeAngle": 25,
+    "lastLandslide": "2022-06-14",
+    "blastCount7d": 1,
+    "recentRainfall": 45,
+    "status": "monitoring"
+  },
+  {
+    "id": "z010",
+    "name": "Iron Ore Zone West",
+    "mineName": "Kolhapur Iron Mine",
+    "district": "Kolhapur",
+    "riskLevel": "orange",
+    "riskScore": 65,
+    "latlngs": [
+      [
+        16.701,
+        74.244
+      ],
+      [
+        16.7035,
+        74.247
+      ],
+      [
+        16.7015,
+        74.2495
+      ],
+      [
+        16.699,
+        74.2465
+      ]
+    ],
+    "soilType": "Black Ferruginous Clay",
+    "slopeAngle": 40,
+    "lastLandslide": "2024-09-02",
+    "blastCount7d": 8,
+    "recentRainfall": 245,
+    "status": "warning"
+  },
+  {
+    "id": "z011",
+    "name": "Basalt Cut Zone A",
+    "mineName": "Pune Basalt Quarry",
+    "district": "Pune",
+    "riskLevel": "yellow",
+    "riskScore": 48,
+    "latlngs": [
+      [
+        18.515,
+        73.858
+      ],
+      [
+        18.5175,
+        73.861
+      ],
+      [
+        18.5155,
+        73.8635
+      ],
+      [
+        18.513,
+        73.8605
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 34,
+    "lastLandslide": "2023-07-11",
+    "blastCount7d": 6,
+    "recentRainfall": 160,
+    "status": "monitoring"
+  },
+  {
+    "id": "z012",
+    "name": "Basalt Cut Zone B",
+    "mineName": "Pune Basalt Quarry",
+    "district": "Pune",
+    "riskLevel": "green",
+    "riskScore": 15,
+    "latlngs": [
+      [
+        18.52,
+        73.864
+      ],
+      [
+        18.5225,
+        73.867
+      ],
+      [
+        18.5205,
+        73.8695
+      ],
+      [
+        18.518,
+        73.8665
+      ]
+    ],
+    "soilType": "Hard Basalt Rock",
+    "slopeAngle": 20,
+    "lastLandslide": "2021-12-01",
+    "blastCount7d": 0,
+    "recentRainfall": 30,
+    "status": "monitoring"
+  },
+  {
+    "id": "z013",
+    "name": "Manganese Pit 1",
+    "mineName": "Raigad Manganese Mine",
+    "district": "Raigad",
+    "riskLevel": "red",
+    "riskScore": 83,
+    "latlngs": [
+      [
+        18.315,
+        73.18
+      ],
+      [
+        18.3175,
+        73.183
+      ],
+      [
+        18.3155,
+        73.1855
+      ],
+      [
+        18.313,
+        73.1825
+      ]
+    ],
+    "soilType": "Alluvial Clay",
+    "slopeAngle": 45,
+    "lastLandslide": "2025-02-20",
+    "blastCount7d": 11,
+    "recentRainfall": 340,
+    "status": "critical"
+  },
+  {
+    "id": "z014",
+    "name": "Manganese Pit 2",
+    "mineName": "Raigad Manganese Mine",
+    "district": "Raigad",
+    "riskLevel": "orange",
+    "riskScore": 70,
+    "latlngs": [
+      [
+        18.31,
+        73.176
+      ],
+      [
+        18.3125,
+        73.179
+      ],
+      [
+        18.3105,
+        73.1815
+      ],
+      [
+        18.308,
+        73.1785
+      ]
+    ],
+    "soilType": "Red Laterite Clay",
+    "slopeAngle": 37,
+    "lastLandslide": "2024-10-15",
+    "blastCount7d": 8,
+    "recentRainfall": 230,
+    "status": "warning"
+  },
+  {
+    "id": "z015",
+    "name": "Yavatmal Coal Section",
+    "mineName": "Yavatmal Coal Block",
+    "district": "Yavatmal",
+    "riskLevel": "green",
+    "riskScore": 25,
+    "latlngs": [
+      [
+        20.389,
+        78.12
+      ],
+      [
+        20.3915,
+        78.123
+      ],
+      [
+        20.3895,
+        78.1255
+      ],
+      [
+        20.387,
+        78.1225
+      ]
+    ],
+    "soilType": "Black Cotton Soil",
+    "slopeAngle": 24,
+    "lastLandslide": "2022-04-08",
+    "blastCount7d": 2,
+    "recentRainfall": 55,
+    "status": "monitoring"
+  },
+  {
+    "id": "z028",
+    "name": "Palghar Stone Quarry North",
+    "mineName": "Palghar Basalt Quarries",
+    "district": "Palghar",
+    "riskLevel": "orange",
+    "riskScore": 71,
+    "latlngs": [
+      [
+        19.7,
+        72.72
+      ],
+      [
+        19.79,
+        72.72
+      ],
+      [
+        19.79,
+        72.81
+      ],
+      [
+        19.7,
+        72.81
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 37,
+    "lastLandslide": "2024-09-14",
+    "blastCount7d": 8,
+    "recentRainfall": 198,
+    "status": "warning"
+  },
+  {
+    "id": "z029",
+    "name": "Manor Quarry Belt",
+    "mineName": "Manor Rock Extraction",
+    "district": "Palghar",
+    "riskLevel": "yellow",
+    "riskScore": 49,
+    "latlngs": [
+      [
+        19.75,
+        72.77
+      ],
+      [
+        19.84,
+        72.77
+      ],
+      [
+        19.84,
+        72.86
+      ],
+      [
+        19.75,
+        72.86
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 21,
+    "lastLandslide": "2023-06-10",
+    "blastCount7d": 3,
+    "recentRainfall": 85,
+    "status": "monitoring"
+  },
+  {
+    "id": "z030",
+    "name": "Bhiwandi Basalt Cut",
+    "mineName": "Thane Basalt Mining Ltd.",
+    "district": "Thane",
+    "riskLevel": "yellow",
+    "riskScore": 52,
+    "latlngs": [
+      [
+        19.17,
+        73.05
+      ],
+      [
+        19.26,
+        73.05
+      ],
+      [
+        19.26,
+        73.14
+      ],
+      [
+        19.17,
+        73.14
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 26,
+    "lastLandslide": "2023-10-05",
+    "blastCount7d": 4,
+    "recentRainfall": 110,
+    "status": "monitoring"
+  },
+  {
+    "id": "z031",
+    "name": "Murbad Rock Quarry",
+    "mineName": "Murbad Quarry Operations",
+    "district": "Thane",
+    "riskLevel": "green",
+    "riskScore": 20,
+    "latlngs": [
+      [
+        19.27,
+        73.1
+      ],
+      [
+        19.36,
+        73.1
+      ],
+      [
+        19.36,
+        73.19
+      ],
+      [
+        19.27,
+        73.19
+      ]
+    ],
+    "soilType": "Hard Basalt",
+    "slopeAngle": 13,
+    "lastLandslide": "2022-05-18",
+    "blastCount7d": 1,
+    "recentRainfall": 38,
+    "status": "monitoring"
+  },
+  {
+    "id": "z032",
+    "name": "Jalgaon Silica Belt East",
+    "mineName": "Jalgaon Silica Mines",
+    "district": "Jalgaon",
+    "riskLevel": "yellow",
+    "riskScore": 46,
+    "latlngs": [
+      [
+        20.96,
+        75.51
+      ],
+      [
+        21.05,
+        75.51
+      ],
+      [
+        21.05,
+        75.6
+      ],
+      [
+        20.96,
+        75.6
+      ]
+    ],
+    "soilType": "Alluvial",
+    "slopeAngle": 18,
+    "lastLandslide": "2023-03-22",
+    "blastCount7d": 2,
+    "recentRainfall": 72,
+    "status": "monitoring"
+  },
+  {
+    "id": "z033",
+    "name": "Bhusawal Quarry Section",
+    "mineName": "Bhusawal Stone Works",
+    "district": "Jalgaon",
+    "riskLevel": "green",
+    "riskScore": 23,
+    "latlngs": [
+      [
+        21.01,
+        75.61
+      ],
+      [
+        21.1,
+        75.61
+      ],
+      [
+        21.1,
+        75.7
+      ],
+      [
+        21.01,
+        75.7
+      ]
+    ],
+    "soilType": "Sandstone",
+    "slopeAngle": 11,
+    "lastLandslide": "2022-07-09",
+    "blastCount7d": 1,
+    "recentRainfall": 41,
+    "status": "monitoring"
+  },
+  {
+    "id": "z034",
+    "name": "Ahmednagar Basalt Zone A",
+    "mineName": "Ahmednagar Mining Corp.",
+    "district": "Ahmednagar",
+    "riskLevel": "orange",
+    "riskScore": 67,
+    "latlngs": [
+      [
+        19.04,
+        74.69
+      ],
+      [
+        19.13,
+        74.69
+      ],
+      [
+        19.13,
+        74.78
+      ],
+      [
+        19.04,
+        74.78
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 30,
+    "lastLandslide": "2024-04-17",
+    "blastCount7d": 6,
+    "recentRainfall": 132,
+    "status": "warning"
+  },
+  {
+    "id": "z035",
+    "name": "Rahuri Limestone Quarry",
+    "mineName": "Rahuri Lime Extraction",
+    "district": "Ahmednagar",
+    "riskLevel": "yellow",
+    "riskScore": 43,
+    "latlngs": [
+      [
+        19.14,
+        74.74
+      ],
+      [
+        19.23,
+        74.74
+      ],
+      [
+        19.23,
+        74.83
+      ],
+      [
+        19.14,
+        74.83
+      ]
+    ],
+    "soilType": "Limestone",
+    "slopeAngle": 19,
+    "lastLandslide": "2023-08-11",
+    "blastCount7d": 3,
+    "recentRainfall": 77,
+    "status": "monitoring"
+  },
+  {
+    "id": "z036",
+    "name": "Sangli Laterite Mine",
+    "mineName": "Sangli Mineral Works",
+    "district": "Sangli",
+    "riskLevel": "yellow",
+    "riskScore": 55,
+    "latlngs": [
+      [
+        16.81,
+        74.52
+      ],
+      [
+        16.9,
+        74.52
+      ],
+      [
+        16.9,
+        74.61
+      ],
+      [
+        16.81,
+        74.61
+      ]
+    ],
+    "soilType": "Laterite",
+    "slopeAngle": 23,
+    "lastLandslide": "2023-11-20",
+    "blastCount7d": 4,
+    "recentRainfall": 96,
+    "status": "monitoring"
+  },
+  {
+    "id": "z037",
+    "name": "Miraj Stone Quarry",
+    "mineName": "Miraj Rock Industries",
+    "district": "Sangli",
+    "riskLevel": "green",
+    "riskScore": 17,
+    "latlngs": [
+      [
+        16.91,
+        74.57
+      ],
+      [
+        17.0,
+        74.57
+      ],
+      [
+        17.0,
+        74.66
+      ],
+      [
+        16.91,
+        74.66
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 10,
+    "lastLandslide": "2021-12-03",
+    "blastCount7d": 0,
+    "recentRainfall": 29,
+    "status": "monitoring"
+  },
+  {
+    "id": "z038",
+    "name": "Solapur Basalt Belt",
+    "mineName": "Solapur Quarry Consortium",
+    "district": "Solapur",
+    "riskLevel": "yellow",
+    "riskScore": 50,
+    "latlngs": [
+      [
+        17.63,
+        75.85
+      ],
+      [
+        17.72,
+        75.85
+      ],
+      [
+        17.72,
+        75.94
+      ],
+      [
+        17.63,
+        75.94
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 20,
+    "lastLandslide": "2023-09-07",
+    "blastCount7d": 3,
+    "recentRainfall": 88,
+    "status": "monitoring"
+  },
+  {
+    "id": "z039",
+    "name": "Akkalkot Limestone Zone",
+    "mineName": "Akkalkot Lime Corp.",
+    "district": "Solapur",
+    "riskLevel": "green",
+    "riskScore": 26,
+    "latlngs": [
+      [
+        17.73,
+        75.9
+      ],
+      [
+        17.82,
+        75.9
+      ],
+      [
+        17.82,
+        75.99
+      ],
+      [
+        17.73,
+        75.99
+      ]
+    ],
+    "soilType": "Limestone",
+    "slopeAngle": 15,
+    "lastLandslide": "2022-08-14",
+    "blastCount7d": 1,
+    "recentRainfall": 47,
+    "status": "monitoring"
+  },
+  {
+    "id": "z040",
+    "name": "Jalna Basalt Quarry Zone",
+    "mineName": "Jalna Rock Mining Co.",
+    "district": "Jalna",
+    "riskLevel": "yellow",
+    "riskScore": 48,
+    "latlngs": [
+      [
+        19.79,
+        75.83
+      ],
+      [
+        19.88,
+        75.83
+      ],
+      [
+        19.88,
+        75.92
+      ],
+      [
+        19.79,
+        75.92
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 19,
+    "lastLandslide": "2023-07-25",
+    "blastCount7d": 3,
+    "recentRainfall": 79,
+    "status": "monitoring"
+  },
+  {
+    "id": "z041",
+    "name": "Ambad Stone Cut Section",
+    "mineName": "Ambad Quarry Works",
+    "district": "Jalna",
+    "riskLevel": "green",
+    "riskScore": 22,
+    "latlngs": [
+      [
+        19.89,
+        75.88
+      ],
+      [
+        19.98,
+        75.88
+      ],
+      [
+        19.98,
+        75.97
+      ],
+      [
+        19.89,
+        75.97
+      ]
+    ],
+    "soilType": "Hard Basalt",
+    "slopeAngle": 12,
+    "lastLandslide": "2022-04-11",
+    "blastCount7d": 1,
+    "recentRainfall": 34,
+    "status": "monitoring"
+  },
+  {
+    "id": "z042",
+    "name": "Beed Basalt Cut Zone A",
+    "mineName": "Beed Mining Industries",
+    "district": "Beed",
+    "riskLevel": "orange",
+    "riskScore": 64,
+    "latlngs": [
+      [
+        18.94,
+        75.71
+      ],
+      [
+        19.03,
+        75.71
+      ],
+      [
+        19.03,
+        75.8
+      ],
+      [
+        18.94,
+        75.8
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 29,
+    "lastLandslide": "2024-03-29",
+    "blastCount7d": 6,
+    "recentRainfall": 128,
+    "status": "warning"
+  },
+  {
+    "id": "z043",
+    "name": "Parli Limestone Belt",
+    "mineName": "Parli Lime Extraction",
+    "district": "Beed",
+    "riskLevel": "yellow",
+    "riskScore": 41,
+    "latlngs": [
+      [
+        19.04,
+        75.76
+      ],
+      [
+        19.13,
+        75.76
+      ],
+      [
+        19.13,
+        75.85
+      ],
+      [
+        19.04,
+        75.85
+      ]
+    ],
+    "soilType": "Limestone",
+    "slopeAngle": 17,
+    "lastLandslide": "2023-05-16",
+    "blastCount7d": 2,
+    "recentRainfall": 65,
+    "status": "monitoring"
+  },
+  {
+    "id": "z044",
+    "name": "Latur Basalt Zone East",
+    "mineName": "Latur Rock Corp.",
+    "district": "Latur",
+    "riskLevel": "orange",
+    "riskScore": 69,
+    "latlngs": [
+      [
+        18.35,
+        76.51
+      ],
+      [
+        18.44,
+        76.51
+      ],
+      [
+        18.44,
+        76.6
+      ],
+      [
+        18.35,
+        76.6
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 33,
+    "lastLandslide": "2024-06-08",
+    "blastCount7d": 7,
+    "recentRainfall": 142,
+    "status": "warning"
+  },
+  {
+    "id": "z045",
+    "name": "Udgir Stone Quarry",
+    "mineName": "Udgir Stone Works",
+    "district": "Latur",
+    "riskLevel": "yellow",
+    "riskScore": 44,
+    "latlngs": [
+      [
+        18.45,
+        76.56
+      ],
+      [
+        18.54,
+        76.56
+      ],
+      [
+        18.54,
+        76.65
+      ],
+      [
+        18.45,
+        76.65
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 18,
+    "lastLandslide": "2023-04-02",
+    "blastCount7d": 2,
+    "recentRainfall": 70,
+    "status": "monitoring"
+  },
+  {
+    "id": "z046",
+    "name": "Parbhani Basalt Mine",
+    "mineName": "Parbhani Mineral Extraction",
+    "district": "Parbhani",
+    "riskLevel": "yellow",
+    "riskScore": 47,
+    "latlngs": [
+      [
+        19.22,
+        76.72
+      ],
+      [
+        19.31,
+        76.72
+      ],
+      [
+        19.31,
+        76.81
+      ],
+      [
+        19.22,
+        76.81
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 20,
+    "lastLandslide": "2023-10-19",
+    "blastCount7d": 3,
+    "recentRainfall": 82,
+    "status": "monitoring"
+  },
+  {
+    "id": "z047",
+    "name": "Hingoli Quarry Zone",
+    "mineName": "Hingoli Rock Industries",
+    "district": "Hingoli",
+    "riskLevel": "green",
+    "riskScore": 24,
+    "latlngs": [
+      [
+        19.67,
+        77.1
+      ],
+      [
+        19.76,
+        77.1
+      ],
+      [
+        19.76,
+        77.19
+      ],
+      [
+        19.67,
+        77.19
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 13,
+    "lastLandslide": "2022-06-30",
+    "blastCount7d": 1,
+    "recentRainfall": 45,
+    "status": "monitoring"
+  },
+  {
+    "id": "z048",
+    "name": "Amravati Manganese Block",
+    "mineName": "Amravati Ore Mining",
+    "district": "Amravati",
+    "riskLevel": "red",
+    "riskScore": 85,
+    "latlngs": [
+      [
+        20.88,
+        77.7
+      ],
+      [
+        20.97,
+        77.7
+      ],
+      [
+        20.97,
+        77.79
+      ],
+      [
+        20.88,
+        77.79
+      ]
+    ],
+    "soilType": "Laterite",
+    "slopeAngle": 42,
+    "lastLandslide": "2025-01-22",
+    "blastCount7d": 10,
+    "recentRainfall": 258,
+    "status": "critical"
+  },
+  {
+    "id": "z049",
+    "name": "Achalpur Mine Zone",
+    "mineName": "Achalpur Coal Works",
+    "district": "Amravati",
+    "riskLevel": "orange",
+    "riskScore": 70,
+    "latlngs": [
+      [
+        20.98,
+        77.75
+      ],
+      [
+        21.07,
+        77.75
+      ],
+      [
+        21.07,
+        77.84
+      ],
+      [
+        20.98,
+        77.84
+      ]
+    ],
+    "soilType": "Clay",
+    "slopeAngle": 32,
+    "lastLandslide": "2024-07-11",
+    "blastCount7d": 7,
+    "recentRainfall": 156,
+    "status": "warning"
+  },
+  {
+    "id": "z050",
+    "name": "Akola Limestone Zone",
+    "mineName": "Akola Lime Industries",
+    "district": "Akola",
+    "riskLevel": "yellow",
+    "riskScore": 53,
+    "latlngs": [
+      [
+        20.66,
+        76.95
+      ],
+      [
+        20.75,
+        76.95
+      ],
+      [
+        20.75,
+        77.04
+      ],
+      [
+        20.66,
+        77.04
+      ]
+    ],
+    "soilType": "Limestone",
+    "slopeAngle": 22,
+    "lastLandslide": "2023-09-14",
+    "blastCount7d": 4,
+    "recentRainfall": 101,
+    "status": "monitoring"
+  },
+  {
+    "id": "z051",
+    "name": "Murtizapur Quarry",
+    "mineName": "Murtizapur Rock Corp.",
+    "district": "Akola",
+    "riskLevel": "green",
+    "riskScore": 19,
+    "latlngs": [
+      [
+        20.76,
+        77.0
+      ],
+      [
+        20.85,
+        77.0
+      ],
+      [
+        20.85,
+        77.09
+      ],
+      [
+        20.76,
+        77.09
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 11,
+    "lastLandslide": "2022-03-05",
+    "blastCount7d": 1,
+    "recentRainfall": 40,
+    "status": "monitoring"
+  },
+  {
+    "id": "z052",
+    "name": "Buldhana Limestone Belt",
+    "mineName": "Buldhana Mineral Co.",
+    "district": "Buldhana",
+    "riskLevel": "yellow",
+    "riskScore": 49,
+    "latlngs": [
+      [
+        20.48,
+        76.13
+      ],
+      [
+        20.57,
+        76.13
+      ],
+      [
+        20.57,
+        76.22
+      ],
+      [
+        20.48,
+        76.22
+      ]
+    ],
+    "soilType": "Limestone",
+    "slopeAngle": 21,
+    "lastLandslide": "2023-07-30",
+    "blastCount7d": 3,
+    "recentRainfall": 87,
+    "status": "monitoring"
+  },
+  {
+    "id": "z053",
+    "name": "Malkapur Stone Zone",
+    "mineName": "Malkapur Quarry Ops.",
+    "district": "Buldhana",
+    "riskLevel": "green",
+    "riskScore": 28,
+    "latlngs": [
+      [
+        20.58,
+        76.18
+      ],
+      [
+        20.67,
+        76.18
+      ],
+      [
+        20.67,
+        76.27
+      ],
+      [
+        20.58,
+        76.27
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 14,
+    "lastLandslide": "2022-09-12",
+    "blastCount7d": 1,
+    "recentRainfall": 51,
+    "status": "monitoring"
+  },
+  {
+    "id": "z054",
+    "name": "Washim Basalt Quarry",
+    "mineName": "Washim Rock Industries",
+    "district": "Washim",
+    "riskLevel": "yellow",
+    "riskScore": 45,
+    "latlngs": [
+      [
+        20.06,
+        77.08
+      ],
+      [
+        20.15,
+        77.08
+      ],
+      [
+        20.15,
+        77.17
+      ],
+      [
+        20.06,
+        77.17
+      ]
+    ],
+    "soilType": "Basalt",
+    "slopeAngle": 18,
+    "lastLandslide": "2023-06-17",
+    "blastCount7d": 2,
+    "recentRainfall": 76,
+    "status": "monitoring"
+  },
+  {
+    "id": "z055",
+    "name": "Risod Mine Section",
+    "mineName": "Risod Mineral Extraction",
+    "district": "Washim",
+    "riskLevel": "green",
+    "riskScore": 21,
+    "latlngs": [
+      [
+        20.16,
+        77.13
+      ],
+      [
+        20.25,
+        77.13
+      ],
+      [
+        20.25,
+        77.22
+      ],
+      [
+        20.16,
+        77.22
+      ]
+    ],
+    "soilType": "Alluvial",
+    "slopeAngle": 12,
+    "lastLandslide": "2022-02-28",
+    "blastCount7d": 0,
+    "recentRainfall": 39,
+    "status": "monitoring"
+  },
+  {
+    "id": "z056",
+    "name": "Gondia Manganese Zone A",
+    "mineName": "Gondia Ore Fields",
+    "district": "Gondia",
+    "riskLevel": "red",
+    "riskScore": 88,
+    "latlngs": [
+      [
+        21.41,
+        80.15
+      ],
+      [
+        21.5,
+        80.15
+      ],
+      [
+        21.5,
+        80.24
+      ],
+      [
+        21.41,
+        80.24
+      ]
+    ],
+    "soilType": "Laterite",
+    "slopeAngle": 44,
+    "lastLandslide": "2025-02-15",
+    "blastCount7d": 11,
+    "recentRainfall": 274,
+    "status": "critical"
+  },
+  {
+    "id": "z057",
+    "name": "Tirora Coal Block",
+    "mineName": "Tirora Coal Extraction",
+    "district": "Gondia",
+    "riskLevel": "orange",
+    "riskScore": 72,
+    "latlngs": [
+      [
+        21.51,
+        80.2
+      ],
+      [
+        21.6,
+        80.2
+      ],
+      [
+        21.6,
+        80.29
+      ],
+      [
+        21.51,
+        80.29
+      ]
+    ],
+    "soilType": "Clay",
+    "slopeAngle": 34,
+    "lastLandslide": "2024-08-09",
+    "blastCount7d": 8,
+    "recentRainfall": 168,
+    "status": "warning"
+  }
 ]

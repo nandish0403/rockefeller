@@ -10,12 +10,16 @@ const NAV = [
   { label: "Crack Reports", icon: "running_with_errors",  to: "/crack-reports" },
   { label: "Reports",       icon: "description",          to: "/reports" },
   { label: "Analytics",     icon: "analytics",            to: "/analytics" },
-  { label: "Upload",        icon: "upload_file",          to: "/upload" },
 ];
 
 export default function SidebarNav() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <Box sx={{
@@ -25,6 +29,7 @@ export default function SidebarNav() {
       borderRight: "1px solid rgba(91,64,62,0.15)",
       display: "flex", flexDirection: "column",
       py: 3, zIndex: 50,
+      animation: "shellSlideInLeft 0.45s ease both",
     }}>
       {/* Logo */}
       <Box sx={{ px: 3, mb: 5 }}>
@@ -46,7 +51,7 @@ export default function SidebarNav() {
 
       {/* Nav */}
       <Box component="nav" sx={{ flex: 1 }}>
-        {NAV.map(({ label, icon, to }) => (
+        {NAV.map(({ label, icon, to }, idx) => (
           <NavLink key={to} to={to} style={{ textDecoration: "none" }}>
             {({ isActive }) => (
               <Box sx={{
@@ -61,6 +66,7 @@ export default function SidebarNav() {
                 letterSpacing: "0.1em", fontFamily: "Inter",
                 cursor: "pointer",
                 transition: "all 0.2s",
+                animation: `fadeUpSoft 0.4s ease ${0.07 + idx * 0.035}s both`,
                 "&:hover": {
                   bgcolor: "#201F1F",
                   color: "#FFB3AD",
@@ -119,6 +125,7 @@ export default function SidebarNav() {
           bgcolor: "#1C1B1B", cursor: "pointer",
           "&:hover": { bgcolor: "#2A2A2A" },
           transition: "all 0.2s",
+          animation: "fadeInSoft 0.45s ease 0.3s both",
         }}>
           <Box sx={{
             width: 32, height: 32, borderRadius: "50%",
@@ -138,6 +145,37 @@ export default function SidebarNav() {
               {currentUser?.role || "—"}
             </Typography>
           </Box>
+        </Box>
+
+        <Box
+          onClick={handleLogout}
+          sx={{
+            mt: 1,
+            p: 1.3,
+            borderRadius: "4px",
+            border: "1px solid rgba(255,179,173,0.22)",
+            color: "#E4BEBA",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            "&:hover": {
+              color: "#FFB3AD",
+              borderColor: "#FFB3AD",
+              background: "rgba(255,179,173,0.08)",
+            },
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+            logout
+          </span>
+          Logout
         </Box>
       </Box>
     </Box>

@@ -85,7 +85,7 @@ export const ZoneDetailsDrawer = ({ zone, open, onClose }) => {
             variant="outlined"
             size="small"
             startIcon={<ReportProblem />}
-            onClick={() => navigate('/upload')}
+            onClick={() => navigate('/field-report')}
             fullWidth
           >
             Report Issue

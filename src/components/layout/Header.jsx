@@ -10,7 +10,6 @@ const LABELS = {
   "/crack-reports":["Command Center", "Crack Reports"],
   "/reports":      ["Command Center", "Reports"],
   "/analytics":    ["Command Center", "Analytics"],
-  "/upload":       ["Command Center", "Upload"],
   "/admin":        ["Command Center", "Admin Panel"],
   "/profile":      ["Command Center", "Profile"],
 };
@@ -31,9 +30,10 @@ export default function Header() {
       borderBottom: "1px solid rgba(91,64,62,0.15)",
       display: "flex", justifyContent: "space-between",
       alignItems: "center", px: 4,
+      animation: "shellSlideDown 0.45s ease both",
     }}>
       {/* Breadcrumb */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, animation: "fadeInSoft 0.5s ease 0.08s both" }}>
         <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#E4BEBA" }}>
           {parent}
         </Typography>
@@ -44,7 +44,7 @@ export default function Header() {
       </Box>
 
       {/* Right */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, animation: "fadeInSoft 0.5s ease 0.14s both" }}>
         <IconButton onClick={() => navigate("/alerts")}
           sx={{ color: "#E4BEBA", "&:hover": { color: "#FFB3AD" } }}>
           <span className="material-symbols-outlined">notifications</span>

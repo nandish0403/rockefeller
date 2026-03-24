@@ -1,50 +1,62 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 
+const TOKEN_KEY = "token";
+const USER_KEY = "currentUser";
+
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 const AuthContext = createContext({
   currentUser: null, token: null,
   isLoading: true, login: async () => {}, logout: () => {},
 });
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(readStoredUser);
   const [token,       setToken]       = useState(
-    localStorage.getItem("token") || null
+    localStorage.getItem(TOKEN_KEY) || null
   );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!token) {
+      localStorage.removeItem(USER_KEY);
+      setCurrentUser(null);
       setIsLoading(false);
       return;
     }
 
-    // ✅ Add 5s timeout — never hangs forever
+    setIsLoading(true);
     const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-      localStorage.removeItem("token");
-      setToken(null);
-      setIsLoading(false);
-    }, 5000);
 
     axios
       .get("http://localhost:8000/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       })
-      .then(res => setCurrentUser(res.data))
-      .catch(() => {
-        localStorage.removeItem("token");
-        setToken(null);
-        setCurrentUser(null);
+      .then(res => {
+        setCurrentUser(res.data);
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data));
       })
-      .finally(() => {
-        clearTimeout(timer);
-        setIsLoading(false);
-      });
+      .catch((err) => {
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setToken(null);
+          setCurrentUser(null);
+        }
+      })
+      .finally(() => setIsLoading(false));
 
-    return () => { clearTimeout(timer); controller.abort(); };
+    return () => controller.abort();
   }, [token]);
 
   const login = async (email, password) => {
@@ -53,19 +65,27 @@ export const AuthProvider = ({ children }) => {
       { email, password }
     );
     const access_token = res.data.access_token;
-    localStorage.setItem("token", access_token);
+    localStorage.setItem(TOKEN_KEY, access_token);
     setToken(access_token);
 
-    const meRes = await axios.get(
-      "http://localhost:8000/api/auth/me",
-      { headers: { Authorization: `Bearer ${access_token}` } }
-    );
+    const user = res.data.user;
+    if (user) {
+      setCurrentUser(user);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      return user;
+    }
+
+    const meRes = await axios.get("http://localhost:8000/api/auth/me", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
     setCurrentUser(meRes.data);
+    localStorage.setItem(USER_KEY, JSON.stringify(meRes.data));
     return meRes.data;
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
     setCurrentUser(null);
   };

@@ -10,3 +10,6 @@ export const submitCrackReport = (formData) =>
 
 export const updateCrackReport = (id, data) =>
   api.patch(`/api/crack-reports/${id}`, data).then(r => r.data);
+
+export const verifyCrackReportsBulk = (reportIds = []) =>
+  api.patch("/api/crack-reports/verify-bulk", { report_ids: reportIds }).then(r => r.data);

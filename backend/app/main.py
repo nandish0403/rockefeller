@@ -15,6 +15,9 @@ from app.api.routes.weather       import router as weather_router
 from app.api.routes.rainfall      import router as rainfall_router
 from app.api.routes.notifications import router as notifications_router
 from app.api.routes.push          import router as push_router
+from app.api.routes.emergency     import router as emergency_router
+from app.api.routes.presence      import router as presence_router
+from app.api.routes.history       import router as history_router
 from app.services.ml_models import preload_models
 from app.services.forecast_runner import run_daily_risk_forecast
 from app.websocket.manager import ws_manager
@@ -75,6 +78,9 @@ app.include_router(weather_router)
 app.include_router(rainfall_router)
 app.include_router(notifications_router)
 app.include_router(push_router)
+app.include_router(emergency_router)
+app.include_router(presence_router)
+app.include_router(history_router)
 
 
 @app.websocket("/ws/{user_id}")

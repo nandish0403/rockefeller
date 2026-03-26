@@ -28,6 +28,8 @@ export default function AnalyticsPage() {
   const [alerts,   setAlerts]   = useState([]);
   const [blasts,   setBlasts]   = useState([]);
   const [weather,  setWeather]  = useState([]);
+  const [cracks,   setCracks]   = useState([]);
+  const [compareIds, setCompareIds] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [fRisk,    setFRisk]    = useState("All");
   const [fMine,    setFMine]    = useState("All");
@@ -37,17 +39,19 @@ export default function AnalyticsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [zoneList, { data: alertData }, { data: blastData }, { data: wxData }] =
+      const [zoneList, { data: alertData }, { data: blastData }, { data: wxData }, { data: crackData }] =
         await Promise.all([
           fetchZones().catch(() => []),
           api.get("/api/alerts").catch(() => ({ data: [] })),
           api.get("/api/blast-events").catch(() => ({ data: [] })),
           api.get("/api/weather").catch(() => ({ data: [] })),
+          api.get("/api/crack-reports").catch(() => ({ data: [] })),
         ]);
       setZones(zoneList  ?? []);
       setAlerts(alertData  ?? []);
       setBlasts(blastData  ?? []);
       setWeather(wxData    ?? []);
+      setCracks(crackData ?? []);
     } finally { setLoading(false); }
   }, []);
 
@@ -72,6 +76,22 @@ export default function AnalyticsPage() {
       if (sortBy === "rainfall") return (b.recent_rainfall ?? 0) - (a.recent_rainfall ?? 0);
       return 0;
     });
+
+  useEffect(() => {
+    if (!compareIds.length && filtered.length) {
+      setCompareIds(filtered.slice(0, 3).map((z) => z.id));
+    }
+  }, [filtered, compareIds.length]);
+
+  const toggleCompare = (zoneId) => {
+    setCompareIds((prev) => {
+      if (prev.includes(zoneId)) return prev.filter((id) => id !== zoneId);
+      if (prev.length >= 3) return prev;
+      return [...prev, zoneId];
+    });
+  };
+
+  const comparedZones = filtered.filter((z) => compareIds.includes(z.id)).slice(0, 3);
 
   useEffect(() => {
     const handlePointer = (e) => {
@@ -372,6 +392,86 @@ export default function AnalyticsPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Zone Comparison Tool ── */}
+      <div style={{
+        background: "#2a2a2a", borderRadius: 4,
+        border: "1px solid rgba(91,64,62,0.1)", padding: 24,
+        animation: "anFadeUp 0.4s ease 0.18s both", marginBottom: 24,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14 }}>
+          <div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#e4beba", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+              Zone Comparison Tool
+            </span>
+            <p style={{ fontSize: 18, color: "#e5e2e1", margin: "4px 0 0", fontWeight: 700 }}>
+              Compare 2-3 zones side-by-side
+            </p>
+          </div>
+          <span style={{ fontSize: 10, color: "#e4beba", opacity: 0.55 }}>Selected: {compareIds.length}/3</span>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+          {filtered.slice(0, 10).map((z) => {
+            const active = compareIds.includes(z.id);
+            return (
+              <button
+                key={z.id}
+                onClick={() => toggleCompare(z.id)}
+                style={{
+                  borderRadius: 2,
+                  border: `1px solid ${active ? "rgba(255,179,173,0.45)" : "rgba(91,64,62,0.2)"}`,
+                  background: active ? "rgba(255,179,173,0.12)" : "transparent",
+                  color: active ? "#ffb3ad" : "#e4beba",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                {z.name}
+              </button>
+            );
+          })}
+        </div>
+
+        {comparedZones.length < 2 ? (
+          <p style={{ fontSize: 11, color: "#a89e9c" }}>Select at least 2 zones to compare.</p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${comparedZones.length},1fr)`, gap: 12 }}>
+            {comparedZones.map((z) => {
+              const zoneBlasts = blasts.filter((b) => b.zone_id === z.id).length;
+              const zoneCracks = cracks.filter((c) => c.zone_id === z.id).length;
+              return (
+                <div key={z.id} style={{ background: "#1f1e1e", borderRadius: 4, border: "1px solid rgba(91,64,62,0.15)", padding: 14 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#e5e2e1" }}>{z.name}</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#e4beba", opacity: 0.7 }}>Risk score: <strong>{Math.round((z.risk_score || 0) * 100)}%</strong></p>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#e4beba", opacity: 0.7 }}>Blast count (7d): <strong>{z.blast_count_7d ?? zoneBlasts}</strong></p>
+                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#e4beba", opacity: 0.7 }}>Recent rainfall: <strong>{z.recent_rainfall ?? 0} mm</strong></p>
+                  <p style={{ margin: "0 0 8px", fontSize: 10, color: "#e4beba", opacity: 0.7 }}>Crack reports: <strong>{zoneCracks}</strong></p>
+                  <button
+                    onClick={() => navigate(`/zones/${z.id}`)}
+                    style={{
+                      border: "1px solid rgba(255,179,173,0.35)",
+                      background: "rgba(255,179,173,0.08)",
+                      color: "#ffb3ad",
+                      fontSize: 9,
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      padding: "6px 10px",
+                      borderRadius: 2,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Open Zone
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Rainfall bar chart across districts ── */}

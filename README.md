@@ -1,168 +1,175 @@
-# Rockefeller Mine Safety Dashboard
+# Rockefeller Mine Safety Platform
 
-Rockefeller is a full-stack mine safety monitoring platform for Maharashtra operations. It combines live risk zones, alerts, reports, crack analysis, and administrative controls in a React dashboard backed by FastAPI.
+Rockefeller is an end-to-end mine safety operations platform that combines geospatial monitoring, field incident reporting, realtime alerts, weather-aware forecasting, and ML-assisted risk intelligence.
 
-## Features
+The system is designed for daily command center use across three operational roles:
+- Admin
+- Safety Officer
+- Field Worker
 
-- Role-based authentication (admin, safety officer, field worker)
-- Interactive map with risk-based zone visualization
-- Alert management and status tracking
-- Crack report and field report workflows
-- Blast logging with anomaly detection
-- District rainfall forecasting and proactive zone risk forecasting
-- Analytics views and admin management panel
+## Why This Project Matters
+
+Mining incidents are rarely caused by one signal. Rockefeller brings multiple signals into one workflow:
+- Zone risk and terrain context
+- Crack and field reports from workers
+- Blast event compliance and anomaly checks
+- Rainfall trends and forecast-based risk elevation
+- Notification fan-out to the right people in real time
+
+## What Is Included
+
+### Core Safety Operations
+- Role-based authentication and protected route access
+- Zone map with risk-based styling and drill-down
+- Alerts lifecycle management: active, acknowledged, resolved
+- Crack report submission, verification, and rejection workflows
+- General field reports with media and metadata
+- Full report detail view at reports/:id
+
+### Realtime and Response
+- Per-user WebSocket channel for instant in-app updates
+- Browser push notifications using VAPID subscriptions
+- Emergency broadcast flow for one-click zone escalation
+- Worker presence check-in and check-out with live headcount
+
+### Intelligence and Forecasting
+- ML-assisted zone risk prediction
+- Blast event logger with PPV monitoring and re-evaluation trigger
+- District rainfall forecast integration
+- Zone-level rainfall risk flags for proactive attention
+- Historical landslide replay controls on map view
+- Zone comparison tool for side-by-side analytics decisions
+
+### Monitoring and Admin Tools
+- IoT Sensor Dashboard page with live telemetry presentation
+- Admin panel for pending crack report decisions
+- Notification center with unread counts and read controls
 
 ## Tech Stack
 
 ### Frontend
-
 - React 18 + Vite
-- Material UI (MUI)
+- Material UI
 - React Router
 - Recharts
-- Leaflet / React-Leaflet
+- React Leaflet
 - Axios
 - Framer Motion
-- react-loading-skeleton
 
 ### Backend
-
 - FastAPI
-- Beanie ODM / MongoDB models
+- Beanie ODM
+- MongoDB
 - JWT authentication
-- Pydantic schemas
-- XGBoost (Model 2)
-- Prophet (Model 3)
-- scikit-learn IsolationForest (Model 4)
+- WebSocket event delivery
+- Web Push (pywebpush)
+- ML integration (XGBoost, Prophet, scikit-learn)
 
-## ML Model Integration (Rockefeller)
+## Architecture Summary
 
-Backend integrates three models through `backend/app/services/ml_models.py`:
+- Frontend handles secure UX, route protection, data visualization, and realtime UI updates.
+- Backend is source of truth for auth, role enforcement, incident state transitions, and notification fan-out.
+- WebSocket and push channels complement API polling for low-latency incident communication.
 
-- Model 2 (zone risk classifier): predicts risk label and risk score from 11 zone and event features.
-- Model 3 (district rainfall forecast): Prophet district-level daily rainfall forecasts.
-- Model 4 (blast anomaly detector): flags anomalous blast events with anomaly score and severity.
+## Repository Structure
 
-### Startup behavior
-
-- ML models are preloaded on API startup via `preload_models()` for Model 2 and Model 4.
-- Daily proactive forecast job runs on startup via `run_daily_risk_forecast()`.
-- District Prophet models are loaded on demand per district.
-
-## Dataset Placement
-
-Place `dataset/` at workspace root (same level as `backend/`) or under `backend/dataset/`.
-
-Expected files include:
-
-- `model2_model.pkl`
-- `model2_scaler.pkl`
-- `model2_encoder.pkl`
-- `model4_blast_anomaly.pkl`
-- `model3_district_models/*.pkl`
-
-## API Endpoints Powered by Models
-
-- `POST /api/crack-reports`: creates crack report and triggers Model 2 risk update flow.
-- `POST /api/blast-events`: runs Model 4 anomaly detection and creates an alert for anomalies.
-- `GET /api/rainfall/forecast/{district}`: returns Prophet rainfall forecast.
-- `GET /api/zones/{zone_id}/forecast`: combines Model 3 (tomorrow rain) + Model 2 (predicted zone risk).
-- `PATCH /api/crack-reports/{report_id}/review`: officer/admin review override workflow.
-
-## Project Structure
-
-- `src/`: Frontend application
-- `backend/app/`: FastAPI backend source
-- `backend/scripts/data/`: Seed/mock JSON data
-- `dataset/`: ML models and reference datasets
+- src/: frontend app
+- backend/app/: API, models, services, and realtime logic
+- backend/scripts/: seed and utility scripts
+- dataset/: model files and data assets
+- uploads/: report and crack-report media storage
 
 ## Prerequisites
 
-- Node.js 18+
-- Python 3.10+
-- pip
-- Running MongoDB instance (required by backend)
+- Node.js 18 or newer
+- Python 3.10 or newer
+- MongoDB running locally or remotely
 
-## Frontend Setup
+## Quick Start
 
-1. Install dependencies:
+### 1) Frontend
 
 ```bash
 npm install
-```
-
-2. Start frontend dev server:
-
-```bash
 npm run dev
 ```
 
-Frontend runs on Vite default port (usually 5173).
+Default dev URL: http://localhost:5173
 
-## Backend Setup
-
-1. Open a terminal in backend folder:
+### 2) Backend
 
 ```bash
 cd backend
-```
-
-2. Create and activate virtual environment (if needed):
-
-```bash
 python -m venv env
 .\env\Scripts\activate
-```
-
-3. Install backend dependencies:
-
-```bash
 pip install -r requirements.txt
-```
-
-4. Start API server:
-
-```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-Backend runs on `http://localhost:8000`.
+Default API URL: http://localhost:8000
 
-## Requirements Notes
+## Important API Surface
 
-Key backend ML dependencies now required:
+### Authentication
+- POST /api/auth/login
+- GET /api/auth/me
 
-- `xgboost>=2.0.0`
-- `scikit-learn>=1.3.0`
-- `prophet>=1.1.5`
-- `pandas>=2.0.0`
-- `numpy>=1.24.0`
+### Incidents and Operations
+- GET /api/alerts
+- PATCH /api/alerts/{id}/acknowledge
+- PATCH /api/alerts/{id}/resolve
+- POST /api/crack-reports
+- PATCH /api/crack-reports/{id}/verify
+- PATCH /api/crack-reports/{id}/reject
+- POST /api/blast-events
+- POST /api/emergency/broadcast
+- PATCH /api/presence/me/check-in
+- PATCH /api/presence/me/check-out
+- GET /api/presence/headcount
 
-## Authentication Notes
+### Reports and Intelligence
+- GET /api/reports
+- GET /api/reports/{report_id}
+- GET /api/zones/{zone_id}/forecast
+- GET /api/rainfall/forecast/{district}
+- GET /api/rainfall/zone-risk-flags
+- GET /api/history
 
-- JWT token is stored in local storage.
-- On reload, the app restores the previous session and revalidates the user.
-- Use the sidebar logout button to clear session and return to login.
+### Notifications
+- GET /api/notifications
+- PATCH /api/notifications/{id}/read
+- PATCH /api/notifications/read-all
+- GET /api/push/vapid-public-key
+- POST /api/push/subscribe
+- WebSocket: /ws/{user_id}?token=<jwt>
 
-## Common Scripts
+## Environment Notes
 
-### Frontend
+Backend .env should include:
+- MONGODB_URL
+- DATABASE_NAME
+- SECRET_KEY
+- ALGORITHM
+- VAPID_PUBLIC_KEY
+- VAPID_PRIVATE_KEY
+- VAPID_CLAIMS_SUBJECT
 
-- `npm run dev` - start development server
-- `npm run build` - production build
-- `npm run preview` - preview production build
+## Operational Flow Example
 
-### Backend
-
-- `uvicorn app.main:app --reload --port 8000` - run API server
+1. Worker submits crack report.
+2. Admin verifies report.
+3. Backend creates alert and notifications.
+4. Assigned workers receive realtime update via WebSocket.
+5. Push notifications are sent to subscribed devices.
+6. Zone details, analytics, and map replay reflect latest incident context.
 
 ## Troubleshooting
 
-- If login fails repeatedly, verify backend is running on port 8000.
-- If data pages are empty, verify backend can access MongoDB and seed data.
-- If forecast endpoints return model errors, verify `dataset/` contains all required `.pkl` files.
-- If map tiles do not load, verify internet access for tile providers.
+- If login fails, confirm backend is running at port 8000 and token is valid.
+- If map or analytics look empty, verify MongoDB and seed data.
+- If no push notifications arrive, confirm browser permission and VAPID keys.
+- If forecast calls fail, verify dataset files and model loading on startup.
 
 ## License
 
-This project is private and intended for internal development use.
+Private internal project for operational and educational use.

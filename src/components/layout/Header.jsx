@@ -23,6 +23,7 @@ const LABELS = {
   "/crack-reports":["Command Center", "Crack Reports"],
   "/reports":      ["Command Center", "Reports"],
   "/analytics":    ["Command Center", "Analytics"],
+  "/iot-sensors":  ["Command Center", "IoT Sensors"],
   "/admin":        ["Command Center", "Admin Panel"],
   "/profile":      ["Command Center", "Profile"],
 };
@@ -44,7 +45,13 @@ export default function Header() {
   const isMapRoute = pathname === "/map";
   const headerLeft = isMapRoute ? 96 : 256;
 
-  const [parent, current] = LABELS[pathname] || ["Command Center", "Dashboard"];
+  const dynamicLabel = pathname.startsWith("/reports/")
+    ? ["Command Center", "Report Details"]
+    : pathname.startsWith("/zones/")
+      ? ["Command Center", "Zone Details"]
+      : null;
+
+  const [parent, current] = dynamicLabel || LABELS[pathname] || ["Command Center", "Dashboard"];
 
   const iconByType = (type) => {
     if (type === "alert") return { icon: "priority_high", color: "#ff5451" };

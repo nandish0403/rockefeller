@@ -13,6 +13,7 @@ from app.models.weather_record import WeatherRecord
 from app.models.history import HistoricalLandslide
 from app.models.risk_prediction import RiskPrediction
 from app.models.user_location import UserLocation
+from app.models.worker_presence import WorkerPresence
 from app.models.notification import Notification
 from app.models.push_subscription import PushSubscription
 
@@ -28,6 +29,7 @@ async def init_db():
             User, Zone, Alert, Report, CrackReport,
             BlastEvent, ExplorationLog, WeatherRecord,
             HistoricalLandslide, RiskPrediction, UserLocation,
+            WorkerPresence,
             Notification, PushSubscription,
         ]
     )

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   fetchAlerts,
   acknowledgeAlert,
   resolveAlert,
 } from "../../api/alerts";
+import { sendEmergencyBroadcast } from "../../api/emergency";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 
 
@@ -14,6 +16,7 @@ const RISK = {
   orange: { label: "Elevated",  color: "#ffb95f", bg: "rgba(255,185,95,0.08)", border: "#ffb95f" },
   yellow: { label: "Warning",   color: "#ffeb3b", bg: "rgba(255,235,59,0.08)", border: "#ffeb3b" },
   green:  { label: "Normal",    color: "#4edea3", bg: "rgba(78,222,163,0.08)", border: "#4edea3" },
+  emergency: { label: "Emergency", color: "#ff2f2f", bg: "rgba(255,47,47,0.16)", border: "#ff2f2f" },
 };
 
 // ── Source → icon mapping ──────────────────────────────────────
@@ -43,6 +46,8 @@ const TABS = ["active", "acknowledged", "resolved"];
 
 export default function AlertsPage() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const canBroadcast = ["admin", "safety_officer"].includes(currentUser?.role);
 
   const [alerts,      setAlerts]      = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -107,6 +112,22 @@ export default function AlertsPage() {
       s.has(id) ? s.delete(id) : s.add(id);
       return s;
     });
+  };
+
+  const doEmergencyBroadcast = async (alert, e) => {
+    e?.stopPropagation();
+    if (!canBroadcast) return;
+
+    setActionLoading(alert.id + "_emg");
+    try {
+      await sendEmergencyBroadcast({
+        zone_id: alert.zone_id,
+        message: `Emergency declared for ${alert.zone_name}. Evacuate immediately and follow muster protocol.`,
+      });
+      await load();
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // ── Filtering ─────────────────────────────────────────────
@@ -345,8 +366,11 @@ export default function AlertsPage() {
               onSelect={() => toggleSelect(alert.id)}
               onAcknowledge={(e) => doAcknowledge(alert.id, e)}
               onResolve={(e)     => doResolve(alert.id, e)}
+              onEmergency={(e)   => doEmergencyBroadcast(alert, e)}
+              canBroadcast={canBroadcast}
               ackLoading={actionLoading === alert.id + "_ack"}
               resLoading={actionLoading === alert.id + "_res"}
+              emgLoading={actionLoading === alert.id + "_emg"}
             />
           ))}
         </div>
@@ -399,7 +423,7 @@ export default function AlertsPage() {
 function AlertCard({
   alert, idx, expanded, onToggleExpand,
   bulkMode, selected, onSelect,
-  onAcknowledge, onResolve, ackLoading, resLoading,
+  onAcknowledge, onResolve, onEmergency, canBroadcast, ackLoading, resLoading, emgLoading,
 }) {
   const risk    = RISK[alert.risk_level] ?? RISK.green;
   const isCrit  = alert.risk_level === "red";
@@ -568,6 +592,14 @@ function AlertCard({
                     loading={resLoading}
                     label="Resolve"
                     variant={isCrit ? "primary" : "secondary"}
+                  />
+                )}
+                {canBroadcast && (
+                  <ActionBtn
+                    onClick={onEmergency}
+                    loading={emgLoading}
+                    label="Emergency"
+                    variant="primary"
                   />
                 )}
                 {alert.status === "resolved" && (

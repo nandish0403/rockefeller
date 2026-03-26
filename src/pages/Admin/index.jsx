@@ -159,10 +159,19 @@ export default function AdminPage() {
   };
 
   const handleVerifyCrack = async (reportId) => {
-    setCrackActionLoading(`${reportId}:verify`);
+    const ids = Array.isArray(reportId)
+      ? reportId.map((v) => String(v).trim()).filter(Boolean)
+      : String(reportId ?? "").split(/[\s,]+/).map((v) => v.trim()).filter(Boolean);
+    if (ids.length !== 1) {
+      setSnackbar({ type: "error", message: "Please verify one crack report at a time." });
+      return;
+    }
+
+    const safeId = ids[0];
+    setCrackActionLoading(`${safeId}:verify`);
     try {
-      await api.patch(`/api/crack-reports/${reportId}/verify`);
-      setPendingCracks((prev) => prev.filter((r) => r.id !== reportId));
+      await api.patch(`/api/crack-reports/${encodeURIComponent(safeId)}/verify`);
+      setPendingCracks((prev) => prev.filter((r) => r.id !== safeId));
       setSnackbar({ type: "success", message: "Crack report verified and alert sent." });
     } catch {
       setSnackbar({ type: "error", message: "Failed to verify crack report." });
@@ -172,10 +181,19 @@ export default function AdminPage() {
   };
 
   const handleRejectCrack = async (reportId) => {
-    setCrackActionLoading(`${reportId}:reject`);
+    const ids = Array.isArray(reportId)
+      ? reportId.map((v) => String(v).trim()).filter(Boolean)
+      : String(reportId ?? "").split(/[\s,]+/).map((v) => v.trim()).filter(Boolean);
+    if (ids.length !== 1) {
+      setSnackbar({ type: "error", message: "Please reject one crack report at a time." });
+      return;
+    }
+
+    const safeId = ids[0];
+    setCrackActionLoading(`${safeId}:reject`);
     try {
-      await api.patch(`/api/crack-reports/${reportId}/reject`);
-      setPendingCracks((prev) => prev.filter((r) => r.id !== reportId));
+      await api.patch(`/api/crack-reports/${encodeURIComponent(safeId)}/reject`);
+      setPendingCracks((prev) => prev.filter((r) => r.id !== safeId));
       setSnackbar({ type: "success", message: "Crack report rejected and submitter notified." });
     } catch {
       setSnackbar({ type: "error", message: "Failed to reject crack report." });

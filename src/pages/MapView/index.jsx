@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from "react-leaflet";
 import { fetchZones } from "../../api/zones";
 import { fetchAlerts } from "../../api/alerts";
+import { fetchHistoricalEvents } from "../../api/history";
 import { T } from "../../theme/tokens";
 
 // ── Risk colours ───────────────────────────────────────────────
@@ -97,6 +98,8 @@ export default function MapViewPage() {
   const [selected,   setSelected]   = useState(null);   // selected zone obj
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [mounted,    setMounted]    = useState(false);
+  const [historyPayload, setHistoryPayload] = useState({ count: 0, season_summary: { monsoon: 0, dry: 0 }, events: [] });
+  const [replayYear, setReplayYear] = useState("all");
 
   // Filter state
   const [district,    setDistrict]    = useState("All");
@@ -106,10 +109,11 @@ export default function MapViewPage() {
 
   useEffect(() => {
     setTimeout(() => setMounted(true), 60);
-    Promise.allSettled([fetchZones(), fetchAlerts({ status: "active" })])
-      .then(([z, a]) => {
+    Promise.allSettled([fetchZones(), fetchAlerts({ status: "active" }), fetchHistoricalEvents()])
+      .then(([z, a, h]) => {
         if (z.status === "fulfilled") setZones(z.value ?? []);
         if (a.status === "fulfilled") setAlerts(a.value ?? []);
+        if (h.status === "fulfilled") setHistoryPayload(h.value ?? { count: 0, season_summary: { monsoon: 0, dry: 0 }, events: [] });
       });
   }, []);
 
@@ -126,6 +130,27 @@ export default function MapViewPage() {
   const zoneAlerts = selected
     ? alerts.filter(a => a.zone_id === selected.id)
     : [];
+
+  const historicalEvents = historyPayload?.events || [];
+  const replayYears = [
+    "all",
+    ...new Set(
+      historicalEvents
+        .map((e) => String(e.date || "").slice(0, 4))
+        .filter((y) => /^\d{4}$/.test(y))
+    ),
+  ];
+
+  const replayRows = replayYear === "all"
+    ? historicalEvents
+    : historicalEvents.filter((e) => String(e.date || "").startsWith(`${replayYear}-`));
+
+  const replayByZone = replayRows.reduce((acc, row) => {
+    const key = String(row.zone_id || "");
+    if (!key) return acc;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
 
   const districts = ["All", ...new Set(zones.map(z => z.district).filter(Boolean))];
 
@@ -169,13 +194,15 @@ export default function MapViewPage() {
                   : zone.risk_level === "orange"
                     ? 0.34
                     : 0.3,
-              weight:      selected?.id === zone.id ? 2.5 : 1.5,
+              weight:      selected?.id === zone.id ? 2.5 : (replayByZone[zone.id] ? 2.2 : 1.5),
+              dashArray: replayByZone[zone.id] ? "6 4" : undefined,
             }}
             eventHandlers={{ click: () => handleZoneClick(zone) }}
           >
             <Tooltip sticky>
               <span style={{ fontSize: 11, fontFamily: "Inter" }}>
                 {zone.name} — {RISK[zone.risk_level]?.label || zone.risk_level?.toUpperCase()}
+                {replayByZone[zone.id] ? ` • ${replayByZone[zone.id]} historical events` : ""}
               </span>
             </Tooltip>
           </Polygon>
@@ -306,6 +333,61 @@ export default function MapViewPage() {
             <span style={{ color: "#ffb3ad", fontWeight: 700 }}>Zone</span>
             {" "}polygon to reveal granular geotechnical data and sensor health.
           </p>
+        </div>
+
+        <div style={{
+          background: "rgba(28,27,27,0.86)",
+          backdropFilter: "blur(16px)",
+          border: "1px solid rgba(91,64,62,0.14)",
+          borderRadius: 4,
+          padding: 14,
+        }}>
+          <p style={{ margin: "0 0 8px", fontSize: 9, color: "#e4beba", opacity: 0.65, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+            Historical Landslide Replay
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span className="material-symbols-outlined" style={{ color: "#ffb95f", fontSize: 16 }}>history</span>
+            <select
+              value={replayYear}
+              onChange={(e) => setReplayYear(e.target.value)}
+              style={{
+                flex: 1,
+                background: "#1c1b1b",
+                border: "1px solid rgba(91,64,62,0.2)",
+                color: "#e5e2e1",
+                borderRadius: 2,
+                fontSize: 11,
+                padding: "6px 8px",
+                fontFamily: "Inter",
+              }}
+            >
+              {replayYears.map((y) => (
+                <option key={y} value={y}>{y === "all" ? "All Years" : y}</option>
+              ))}
+            </select>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(replayYears.length - 1, 0)}
+            value={Math.max(0, replayYears.indexOf(replayYear))}
+            onChange={(e) => setReplayYear(replayYears[Number(e.target.value)] || "all")}
+            style={{ width: "100%" }}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 9, color: "#e4beba", opacity: 0.6 }}>
+            <span>Events: {replayRows.length}</span>
+            <span>Zones highlighted: {Object.keys(replayByZone).length}</span>
+          </div>
+          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ background: "#1c1b1b", borderRadius: 2, padding: "6px 8px" }}>
+              <span style={{ fontSize: 9, color: "#e4beba", opacity: 0.6 }}>Monsoon</span>
+              <p style={{ margin: "2px 0 0", color: "#4edea3", fontWeight: 700 }}>{historyPayload?.season_summary?.monsoon ?? 0}</p>
+            </div>
+            <div style={{ background: "#1c1b1b", borderRadius: 2, padding: "6px 8px" }}>
+              <span style={{ fontSize: 9, color: "#e4beba", opacity: 0.6 }}>Dry</span>
+              <p style={{ margin: "2px 0 0", color: "#ffb95f", fontWeight: 700 }}>{historyPayload?.season_summary?.dry ?? 0}</p>
+            </div>
+          </div>
         </div>
       </div>
 

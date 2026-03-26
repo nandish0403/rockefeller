@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, Dialog, Typography } from "@mui/material";
 
 import { useAuth } from "./AuthContext";
 import {
@@ -40,6 +41,7 @@ export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [snackbar, setSnackbar] = useState(null);
+  const [emergencyModal, setEmergencyModal] = useState(null);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.is_read).length,
@@ -66,6 +68,8 @@ export function NotificationProvider({ children }) {
       reconnectTimerRef.current = null;
     }
     if (wsRef.current) {
+      // Prevent onclose from scheduling reconnect when we intentionally close.
+      wsRef.current.onclose = null;
       wsRef.current.close();
       wsRef.current = null;
     }
@@ -74,13 +78,24 @@ export function NotificationProvider({ children }) {
   const connectSocket = useCallback(() => {
     if (!currentUser?.id || !token) return;
 
-    closeSocket();
+    // Clean old socket (if any) without triggering reconnect loops.
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
     const ws = new WebSocket(`ws://localhost:8000/ws/${currentUser.id}?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
       try {
         const parsed = JSON.parse(event.data);
+
+        if (parsed?.event === "emergency_broadcast" && parsed?.payload) {
+          setEmergencyModal(parsed.payload);
+        }
+
         if (parsed?.event !== "notification" || !parsed?.notification) return;
 
         setNotifications((prev) => [parsed.notification, ...prev]);
@@ -96,9 +111,12 @@ export function NotificationProvider({ children }) {
 
     ws.onclose = () => {
       if (!currentUser?.id) return;
-      reconnectTimerRef.current = setTimeout(() => {
-        connectSocket();
-      }, 5000);
+      if (!reconnectTimerRef.current) {
+        reconnectTimerRef.current = setTimeout(() => {
+          reconnectTimerRef.current = null;
+          connectSocket();
+        }, 5000);
+      }
     };
   }, [closeSocket, currentUser?.id, token]);
 
@@ -172,6 +190,8 @@ export function NotificationProvider({ children }) {
       unreadCount,
       snackbar,
       setSnackbar,
+      emergencyModal,
+      dismissEmergencyModal: () => setEmergencyModal(null),
       isDrawerOpen,
       openDrawer: () => setIsDrawerOpen(true),
       closeDrawer: () => setIsDrawerOpen(false),
@@ -179,10 +199,56 @@ export function NotificationProvider({ children }) {
       markAllRead,
       reloadNotifications: loadNotifications,
     }),
-    [isDrawerOpen, loadNotifications, markAllRead, markRead, notifications, snackbar, unreadCount]
+    [emergencyModal, isDrawerOpen, loadNotifications, markAllRead, markRead, notifications, snackbar, unreadCount]
   );
 
-  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
+  return (
+    <NotificationContext.Provider value={value}>
+      {children}
+
+      <Dialog fullScreen open={!!emergencyModal} onClose={() => setEmergencyModal(null)}>
+        <Box
+          sx={{
+            minHeight: "100vh",
+            bgcolor: "#2a0505",
+            background: "radial-gradient(circle at top, rgba(255,84,81,0.24), #180303 70%)",
+            color: "#fff",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            px: 3,
+            textAlign: "center",
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 88, color: "#ff5451" }}>
+            warning
+          </span>
+          <Typography sx={{ fontSize: { xs: 30, md: 48 }, fontWeight: 900, letterSpacing: "0.04em", mb: 1.2 }}>
+            EMERGENCY ALERT
+          </Typography>
+          <Typography sx={{ fontSize: { xs: 18, md: 26 }, fontWeight: 700, color: "#ffb3ad", mb: 1 }}>
+            {emergencyModal?.zone_name || "Assigned Zone"}
+          </Typography>
+          <Typography sx={{ maxWidth: 920, fontSize: { xs: 16, md: 22 }, color: "#ffe6e6", lineHeight: 1.6 }}>
+            {emergencyModal?.message || "Emergency protocol activated. Follow safety instructions immediately."}
+          </Typography>
+
+          <Alert severity="error" variant="filled" sx={{ mt: 3, bgcolor: "#a31212", fontWeight: 700 }}>
+            Proceed to safe muster point and confirm your check-out status.
+          </Alert>
+
+          <Button
+            variant="contained"
+            onClick={() => setEmergencyModal(null)}
+            sx={{ mt: 4, bgcolor: "#ff5451", color: "#240000", fontWeight: 800, px: 4, py: 1.2 }}
+          >
+            I UNDERSTAND
+          </Button>
+        </Box>
+      </Dialog>
+    </NotificationContext.Provider>
+  );
 }
 
 export const useNotifications = () => useContext(NotificationContext);

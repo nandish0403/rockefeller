@@ -9,10 +9,12 @@ import ZoneDetails from "../pages/ZoneDetails";
 import CrackReports from "../pages/CrackReports";
 import Alerts from "../pages/Alerts";
 import Reports from "../pages/Reports";
+import ReportDetailsPage from "../pages/ReportDetails";
 import Analytics from "../pages/Analytics";
 import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
 import FieldReportPage from "../pages/FieldReport";
+import IoTSensorsPage from "../pages/IoTSensors";
 
 const router = createBrowserRouter([
   // Public routes
@@ -35,7 +37,9 @@ const router = createBrowserRouter([
       { path: "alerts",           element: <Alerts /> },
       { path: "crack-reports",    element: <CrackReports /> },
       { path: "reports",          element: <Reports /> },
+      { path: "reports/:id",      element: <ReportDetailsPage /> },
       { path: "analytics",        element: <Analytics /> },
+      { path: "iot-sensors",      element: <IoTSensorsPage /> },
       { path: "profile",          element: <Profile /> },
       { path:"field-report",      element: <FieldReportPage/>},
 

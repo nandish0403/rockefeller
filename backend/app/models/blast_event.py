@@ -8,8 +8,11 @@ class BlastEvent(Document):
     logged_by: str
     blast_date: datetime
     intensity: Optional[float] = None
+    ppv_reading: Optional[float] = None
     depth_meters: Optional[float] = None
     blasts_this_week: Optional[int] = None
+    dgms_ppv_limit: Optional[float] = None
+    is_ppv_exceedance: Optional[bool] = None
     is_anomaly: Optional[bool] = None
     anomaly_score: Optional[float] = None
     anomaly_severity: Optional[str] = None

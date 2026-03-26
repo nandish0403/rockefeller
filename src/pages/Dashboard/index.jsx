@@ -13,6 +13,13 @@ import Skeleton from "react-loading-skeleton";
 import { useDashboardData } from "./useDashboardData";
 import { useAuth } from "../../context/AuthContext";
 import { acknowledgeAlert, resolveAlert } from "../../api/alerts";
+import {
+  checkIn,
+  checkOut,
+  fetchHeadcount,
+  fetchMyPresence,
+  fetchRedAlertInside,
+} from "../../api/presence";
 import { formatTimeAgo } from "../../utils/formatUtils";
 import { T } from "../../theme/tokens";
 import AnimatedNumber from "../../components/common/AnimatedNumber";
@@ -292,7 +299,12 @@ export default function DashboardPage() {
   const navigate     = useNavigate();
   const { currentUser } = useAuth();
   const canAct = ["admin", "safety_officer"].includes(currentUser?.role);
+  const isFieldWorker = currentUser?.role === "field_worker";
   const [dismissBlastBanner, setDismissBlastBanner] = useState(false);
+  const [headcountRows, setHeadcountRows] = useState([]);
+  const [redInsideRows, setRedInsideRows] = useState([]);
+  const [myPresence, setMyPresence] = useState(null);
+  const [presenceBusy, setPresenceBusy] = useState(false);
 
   const {
     kpis, recentAlerts, distribution, trendData,
@@ -307,6 +319,51 @@ export default function DashboardPage() {
 
   const handleAck     = async (id) => { await acknowledgeAlert(id); };
   const handleResolve = async (id) => { await resolveAlert(id); };
+
+  const loadPresence = useMemo(() => async () => {
+    try {
+      const [hc, red] = await Promise.all([
+        fetchHeadcount(),
+        fetchRedAlertInside(),
+      ]);
+      setHeadcountRows(hc?.zones || []);
+      setRedInsideRows(red?.zones || []);
+
+      if (isFieldWorker) {
+        const mine = await fetchMyPresence();
+        setMyPresence(mine || null);
+      }
+    } catch {
+      setHeadcountRows([]);
+      setRedInsideRows([]);
+    }
+  }, [isFieldWorker]);
+
+  useEffect(() => {
+    loadPresence();
+    const t = setInterval(loadPresence, 12000);
+    return () => clearInterval(t);
+  }, [loadPresence]);
+
+  const doCheckIn = async () => {
+    setPresenceBusy(true);
+    try {
+      await checkIn(currentUser?.zone_assigned || undefined);
+      await loadPresence();
+    } finally {
+      setPresenceBusy(false);
+    }
+  };
+
+  const doCheckOut = async () => {
+    setPresenceBusy(true);
+    try {
+      await checkOut();
+      await loadPresence();
+    } finally {
+      setPresenceBusy(false);
+    }
+  };
 
   // Maharashtra center
   const CENTER = [19.7515, 75.7139];
@@ -433,6 +490,112 @@ export default function DashboardPage() {
             sub="Field worker submissions"
           />
         </Grid>
+      </Grid>
+
+      {/* ── Row 1A: Presence / Headcount ─────────────── */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} lg={isFieldWorker ? 4 : 6}>
+          <Box sx={{ ...glass, p: 3, height: 250, display: "flex", flexDirection: "column" }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.onSurface, mb: 1.5 }}>
+              Live Headcount By Zone
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.1, overflowY: "auto" }}>
+              {(headcountRows || []).slice(0, 6).map((row) => (
+                <Box key={row.zone_id} sx={{ display: "flex", justifyContent: "space-between", gap: 1.2 }}>
+                  <Typography sx={{ fontSize: 11, color: T.onSurface, maxWidth: 190 }}>
+                    {row.zone_name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 11, color: T.tertiary, fontWeight: 700 }}>
+                    Inside {row.inside_count}
+                  </Typography>
+                </Box>
+              ))}
+              {(headcountRows || []).length === 0 && (
+                <Typography sx={{ fontSize: 11, color: T.onSurfaceVar }}>No headcount updates yet.</Typography>
+              )}
+            </Box>
+          </Box>
+        </Grid>
+
+        <Grid item xs={12} lg={isFieldWorker ? 4 : 6}>
+          <Box sx={{ ...glass, p: 3, height: 250, display: "flex", flexDirection: "column" }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.onSurface, mb: 1.5 }}>
+              Red Alert: Workers Still Inside
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.1, overflowY: "auto" }}>
+              {(redInsideRows || []).filter((z) => z.inside_count > 0).slice(0, 6).map((zone) => (
+                <Box key={zone.alert_id}>
+                  <Typography sx={{ fontSize: 11, color: T.primaryCont, fontWeight: 700 }}>
+                    {zone.zone_name} ({zone.inside_count})
+                  </Typography>
+                  <Typography sx={{ fontSize: 10, color: T.onSurfaceVar }}>
+                    {zone.inside_workers.map((w) => w.user_name).join(", ")}
+                  </Typography>
+                </Box>
+              ))}
+              {(redInsideRows || []).filter((z) => z.inside_count > 0).length === 0 && (
+                <Typography sx={{ fontSize: 11, color: T.tertiary }}>No workers inside red-alert zones.</Typography>
+              )}
+            </Box>
+          </Box>
+        </Grid>
+
+        {isFieldWorker && (
+          <Grid item xs={12} lg={4}>
+            <Box sx={{ ...glass, p: 3, height: 250, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <Box>
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: T.onSurface, mb: 1 }}>
+                  Worker Check-In Status
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: T.onSurfaceVar }}>
+                  Current status: <strong style={{ color: myPresence?.status === "inside" ? "#ffb95f" : "#4edea3" }}>
+                    {myPresence?.status || "outside"}
+                  </strong>
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: T.onSurfaceVar, mt: 0.6 }}>
+                  Zone: {myPresence?.zone_name || currentUser?.zone_assigned || "Not assigned"}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: "flex", gap: 1.2 }}>
+                <Box
+                  onClick={!presenceBusy ? doCheckIn : undefined}
+                  sx={{
+                    flex: 1,
+                    textAlign: "center",
+                    py: 1,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: "2px",
+                    cursor: presenceBusy ? "wait" : "pointer",
+                    bgcolor: "rgba(255,185,95,0.18)",
+                    color: "#ffb95f",
+                    border: "1px solid rgba(255,185,95,0.45)",
+                  }}
+                >
+                  CHECK IN
+                </Box>
+                <Box
+                  onClick={!presenceBusy ? doCheckOut : undefined}
+                  sx={{
+                    flex: 1,
+                    textAlign: "center",
+                    py: 1,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: "2px",
+                    cursor: presenceBusy ? "wait" : "pointer",
+                    bgcolor: "rgba(78,222,163,0.18)",
+                    color: "#4edea3",
+                    border: "1px solid rgba(78,222,163,0.45)",
+                  }}
+                >
+                  CHECK OUT
+                </Box>
+              </Box>
+            </Box>
+          </Grid>
+        )}
       </Grid>
 
       {/* ── Row 1B: Zone Risk Score Cards ─────────── */}

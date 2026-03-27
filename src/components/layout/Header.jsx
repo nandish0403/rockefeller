@@ -24,6 +24,8 @@ const LABELS = {
   "/reports":      ["Command Center", "Reports"],
   "/analytics":    ["Command Center", "Analytics"],
   "/iot-sensors":  ["Command Center", "IoT Sensors"],
+  "/upload":       ["Command Center", "Upload Report"],
+  "/field-report": ["Command Center", "Field Report"],
   "/admin":        ["Command Center", "Admin Panel"],
   "/profile":      ["Command Center", "Profile"],
 };

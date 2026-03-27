@@ -19,6 +19,7 @@ from app.api.routes.push          import router as push_router
 from app.api.routes.emergency     import router as emergency_router
 from app.api.routes.presence      import router as presence_router
 from app.api.routes.history       import router as history_router
+from app.api.routes.users         import router as users_router
 from app.services.ml_models import preload_models
 from app.services.crack_ai import preload_crack_model
 from app.services.forecast_runner import run_daily_risk_forecast
@@ -88,6 +89,7 @@ app.include_router(push_router)
 app.include_router(emergency_router)
 app.include_router(presence_router)
 app.include_router(history_router)
+app.include_router(users_router)
 
 
 @app.websocket("/ws/{user_id}")

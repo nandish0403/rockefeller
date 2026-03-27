@@ -22,6 +22,8 @@ def zone_to_dict(z: Zone) -> dict:
         "latlngs": z.latlngs,
         "soil_type": z.soil_type,
         "slope_angle": z.slope_angle,
+        "elevation_m": z.elevation_m,
+        "area_sq_km": z.area_sq_km,
         "status": z.status,
         "last_landslide": z.last_landslide,
         "blast_count_7d": z.blast_count_7d,

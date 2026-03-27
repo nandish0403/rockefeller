@@ -15,6 +15,7 @@ import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
 import FieldReportPage from "../pages/FieldReport";
 import IoTSensorsPage from "../pages/IoTSensors";
+import Upload from "../pages/Upload";
 
 const router = createBrowserRouter([
   // Public routes
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
       { path: "reports/:id",      element: <ReportDetailsPage /> },
       { path: "analytics",        element: <Analytics /> },
       { path: "iot-sensors",      element: <IoTSensorsPage /> },
+      { path: "upload",           element: <Upload /> },
       { path: "profile",          element: <Profile /> },
       { path:"field-report",      element: <FieldReportPage/>},
 

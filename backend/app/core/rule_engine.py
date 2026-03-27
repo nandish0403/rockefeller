@@ -113,8 +113,8 @@ async def get_zone_features(zone: Zone) -> dict:
         "crack_count_7d":       crack_count,
         "avg_crack_score":      round(avg_crack, 3),
         "critical_crack_flag":  critical_flag,
-        "elevation_m":          getattr(zone, "elevation_m", 300) or 300,
-        "area_sq_km":           getattr(zone, "area_sq_km", 100) or 100,
+        "elevation_m":          zone.elevation_m or 300,
+        "area_sq_km":           zone.area_sq_km or 100,
         "days_since_inspection":days_since,
         "is_monsoon":           1 if month_now in [6, 7, 8, 9] else 0,
     }

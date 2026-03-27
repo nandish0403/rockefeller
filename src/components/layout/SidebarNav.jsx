@@ -11,6 +11,7 @@ const NAV = [
   { label: "Reports",       icon: "description",          to: "/reports" },
   { label: "Analytics",     icon: "analytics",            to: "/analytics" },
   { label: "IoT Sensors",   icon: "sensors",              to: "/iot-sensors" },
+  { label: "Upload",        icon: "upload_file",          to: "/upload" },
 ];
 
 export default function SidebarNav() {

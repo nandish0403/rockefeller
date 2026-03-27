@@ -303,7 +303,7 @@ export default function FieldReportPage() {
                 <button key={t.value}
                   onClick={() => set("report_type", t.value)} style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 12px", borderRadius: 99, border: "none",
+                  padding: "6px 12px", borderRadius: 99,
                   cursor: "pointer", fontFamily: "Inter",
                   fontSize: 10, fontWeight: 700,
                   textTransform: "uppercase", letterSpacing: "0.08em",

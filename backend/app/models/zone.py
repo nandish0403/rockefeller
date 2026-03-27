@@ -23,6 +23,8 @@ class Zone(Document):
     latlngs: List[List[float]] = []   # [[lat,lng], ...] for React Leaflet
     soil_type: Optional[str] = None
     slope_angle: Optional[float] = None
+    elevation_m: Optional[float] = None
+    area_sq_km: Optional[float] = None
     status: ZoneStatus = ZoneStatus.monitoring
     last_landslide: Optional[str] = None
     blast_count_7d: int = 0

@@ -493,7 +493,7 @@ function AddCard({ onClick }) {
         cursor: "pointer", minHeight: 200,
         transition: "all 0.2s",
         borderColor: hov ? "rgba(255,179,173,0.3)" : "rgba(91,64,62,0.2)",
-        background: hov ? "#1c1b1b" : "#0e0e0e",
+        ...(hov ? { background: "#1c1b1b" } : { background: "#0e0e0e" }),
         animation: "rpFadeUp 0.4s ease 0.3s both",
       }}>
       <div style={{

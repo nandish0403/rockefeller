@@ -14,8 +14,18 @@ class RegisterRequest(BaseModel):
     role:          UserRole    = UserRole.field_worker
     district:      Optional[str] = None
     zone_assigned: Optional[str] = None
-    worker_id:     Optional[str] = None   # ← NEW
-    phone:         Optional[str] = None   # ← NEW
+    worker_id:     Optional[str] = None
+    phone:         Optional[str] = None
+
+class UserUpdateRequest(BaseModel):
+    """Admin-only update schema. Email changes are excluded to prevent account takeover."""
+    name:          Optional[str]      = None
+    role:          Optional[UserRole] = None
+    district:      Optional[str]      = None
+    zone_assigned: Optional[str]      = None
+    worker_id:     Optional[str]      = None
+    phone:         Optional[str]      = None
+    password:      Optional[str]      = None
 
 class LoginRequest(BaseModel):
     email:    EmailStr

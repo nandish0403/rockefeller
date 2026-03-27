@@ -9,6 +9,8 @@ class ZoneUpdateRequest(BaseModel):
     recent_rainfall: Optional[float] = None
     soil_type: Optional[str] = None
     slope_angle: Optional[float] = None
+    elevation_m: Optional[float] = None
+    area_sq_km: Optional[float] = None
 
 class ZoneResponse(BaseModel):
     id: str
@@ -20,6 +22,8 @@ class ZoneResponse(BaseModel):
     latlngs: List[List[float]]
     soil_type: Optional[str]
     slope_angle: Optional[float]
+    elevation_m: Optional[float]
+    area_sq_km: Optional[float]
     status: str
     last_landslide: Optional[str]
     blast_count_7d: int

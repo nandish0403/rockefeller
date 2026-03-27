@@ -2,11 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchZones }   from "../../api/zones";
 import { fetchAlerts }  from "../../api/alerts";
 import { fetchWeather } from "../../api/weather";
+import { fetchReports } from "../../api/reports";
 
 export function useDashboardData() {
   const [zones,   setZones]   = useState([]);
   const [alerts,  setAlerts]  = useState([]);
   const [weather, setWeather] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,19 +19,29 @@ export function useDashboardData() {
       fetchZones(),
       fetchAlerts({ status: "active" }),
       fetchWeather(),
-    ]).then(([z, a, w]) => {
+      fetchReports(),
+    ]).then(([z, a, w, r]) => {
       if (z.status === "fulfilled") setZones(z.value  ?? []);
       if (a.status === "fulfilled") setAlerts(a.value ?? []);
       if (w.status === "fulfilled") setWeather(w.value ?? []);
+      if (r.status === "fulfilled") setReports(r.value ?? []);
     }).finally(() => setLoading(false));   // ✅ ALWAYS runs
   }, []);
 
-  const kpis = useMemo(() => ({
-    totalZones:    zones.length,
-    criticalZones: zones.filter(z => z.risk_level === "red").length,
-    activeAlerts:  alerts.length,
-    reportsToday:  0,
-  }), [zones, alerts]);
+  const kpis = useMemo(() => {
+    const today = new Date().toDateString();
+    const reportsToday = reports.filter(rpt => {
+      const d = rpt.created_at ? new Date(rpt.created_at).toDateString() : null;
+      return d === today;
+    }).length;
+
+    return {
+      totalZones:    zones.length,
+      criticalZones: zones.filter(z => z.risk_level === "red").length,
+      activeAlerts:  alerts.length,
+      reportsToday,
+    };
+  }, [zones, alerts, reports]);
 
   const distribution = useMemo(() => ({
     green:  zones.filter(z => z.risk_level === "green").length,

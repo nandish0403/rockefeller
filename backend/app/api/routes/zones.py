@@ -5,7 +5,8 @@ from app.models.zone import Zone
 from app.schemas.zone import ZoneUpdateRequest
 from app.api.dependencies import get_current_user, require_officer
 from app.models.user import User
-from app.core.rule_engine import get_zone_features
+from app.models.history import HistoricalLandslide
+from app.core.rule_engine import get_zone_features, simple_risk_score
 from app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
 
 router = APIRouter(prefix="/api/zones", tags=["zones"])
@@ -105,3 +106,69 @@ async def update_zone(
     zone.last_updated = datetime.utcnow()
     await zone.save()
     return zone_to_dict(zone)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/risk-levels
+# Returns a fleet-level summary of zone risk levels plus per-zone breakdown.
+# ---------------------------------------------------------------------------
+risk_levels_router = APIRouter(prefix="/api/risk-levels", tags=["zones"])
+
+@risk_levels_router.get("")
+async def get_risk_levels(
+    district: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns an aggregated summary of zone risk levels.
+
+    Response includes:
+    - ``summary``: count of zones in each risk band (green / yellow / orange / red)
+    - ``zones``: per-zone risk snapshot with id, name, risk_level, risk_score,
+      district, and a ``simple_risk_score`` calculated from the weighted formula
+    """
+    zones = await Zone.find().to_list()
+    if district:
+        zones = [z for z in zones if z.district.lower() == district.lower()]
+
+    summary = {"green": 0, "yellow": 0, "orange": 0, "red": 0}
+    zone_rows = []
+
+    for z in zones:
+        level = str(z.risk_level)
+        if level in summary:
+            summary[level] += 1
+
+        historical_count = await HistoricalLandslide.find(
+            HistoricalLandslide.zone_id == str(z.id)
+        ).count()
+
+        fallback = simple_risk_score(
+            rainfall_mm=float(z.recent_rainfall or 0),
+            slope_deg=float(z.slope_angle or 0),
+            soil_type=z.soil_type,
+            blast_count_7d=z.blast_count_7d,
+            historical_landslides=historical_count,
+        )
+
+        zone_rows.append({
+            "id": str(z.id),
+            "name": z.name,
+            "mine_name": z.mine_name,
+            "district": z.district,
+            "risk_level": level,
+            "risk_score": z.risk_score,
+            "simple_risk_score": fallback["risk_score"],
+            "simple_risk_level": fallback["risk_level"],
+            "last_updated": z.last_updated.isoformat() if z.last_updated else None,
+        })
+
+    # Sort: red → orange → yellow → green
+    _order = {"red": 0, "orange": 1, "yellow": 2, "green": 3}
+    zone_rows.sort(key=lambda r: _order.get(r["risk_level"], 4))
+
+    return {
+        "summary": summary,
+        "total": len(zone_rows),
+        "zones": zone_rows,
+    }

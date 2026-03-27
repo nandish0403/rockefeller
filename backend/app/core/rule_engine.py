@@ -4,7 +4,76 @@ from app.models.alert import Alert
 from app.models.blast_event import BlastEvent
 from app.models.crack_report import CrackReport
 from app.models.weather_record import WeatherRecord
+from app.models.history import HistoricalLandslide
 from app.services.ml_models import predict_zone_risk
+
+# ---------------------------------------------------------------------------
+# Simple weighted-sum risk formula (used as fallback when ML model unavailable)
+# Risk = 0.40 * rainfall + 0.20 * slope + 0.15 * soil_factor
+#       + 0.15 * blast_activity + 0.10 * historical_landslides
+# All input components are normalised to [0, 1] before weighting.
+# ---------------------------------------------------------------------------
+_SOIL_RISK = {
+    "clay": 0.9,
+    "loam": 0.6,
+    "sandy loam": 0.5,
+    "sandy": 0.4,
+    "rocky": 0.2,
+    "gravel": 0.3,
+}
+
+def _normalize_rainfall(rainfall_mm: float) -> float:
+    """Map rainfall (mm/24h) to a 0–1 score."""
+    return min(rainfall_mm / 350.0, 1.0)
+
+def _normalize_slope(slope_deg: float) -> float:
+    """Map slope angle (degrees) to a 0–1 score."""
+    return min(slope_deg / 60.0, 1.0)
+
+def _soil_factor(soil_type: str | None) -> float:
+    """Return soil instability factor in [0, 1]."""
+    if not soil_type:
+        return 0.5
+    return _SOIL_RISK.get(soil_type.lower(), 0.5)
+
+def _normalize_blast_activity(blast_count_7d: int) -> float:
+    """Map weekly blast count to a 0–1 score."""
+    return min(blast_count_7d / 10.0, 1.0)
+
+def _normalize_historical(historical_count: int) -> float:
+    """Map historical landslide count to a 0–1 score."""
+    return min(historical_count / 5.0, 1.0)
+
+def simple_risk_score(
+    rainfall_mm: float,
+    slope_deg: float,
+    soil_type: str | None,
+    blast_count_7d: int,
+    historical_landslides: int,
+) -> dict:
+    """
+    Compute a simple weighted-sum risk score and label.
+
+    Returns a dict with ``risk_score`` (float, 0–1) and ``risk_level``
+    (``"green"``, ``"yellow"``, or ``"red"``).
+    """
+    score = (
+        0.40 * _normalize_rainfall(rainfall_mm)
+        + 0.20 * _normalize_slope(slope_deg)
+        + 0.15 * _soil_factor(soil_type)
+        + 0.15 * _normalize_blast_activity(blast_count_7d)
+        + 0.10 * _normalize_historical(historical_landslides)
+    )
+    score = round(min(score, 1.0), 4)
+
+    if score >= 0.6:
+        label = "red"
+    elif score >= 0.3:
+        label = "yellow"
+    else:
+        label = "green"
+
+    return {"risk_score": score, "risk_level": label}
 
 async def get_zone_features(zone: Zone) -> dict:
     """Build feature dict for a zone from Atlas collections."""
@@ -106,18 +175,22 @@ async def run_zone_risk_update(zone_id: str):
         new_level = str(result["risk_label"])
         new_score = float(result["risk_score"])
     except Exception as e:
-        print(f"[RuleEngine] ML model unavailable ({e}), using thresholds.")
-        r = features["rainfall_mm_24h"]
-        b = features["blast_count_7d"]
-        c = features["critical_crack_flag"]
-        if r >= 350 or b >= 10 or c:
-            new_level, new_score = "red", 0.85
-        elif r >= 250 or b >= 5:
-            new_level, new_score = "orange", 0.60
-        elif r >= 150 or b >= 3:
-            new_level, new_score = "yellow", 0.35
-        else:
-            new_level, new_score = "green", 0.10
+        print(f"[RuleEngine] ML model unavailable ({e}), using simple risk formula.")
+        landslide_count = await HistoricalLandslide.find(
+            HistoricalLandslide.zone_id == str(zone.id)
+        ).count()
+        fallback = simple_risk_score(
+            rainfall_mm=features["rainfall_mm_24h"],
+            slope_deg=float(zone.slope_angle or 0),
+            soil_type=zone.soil_type,
+            blast_count_7d=features["blast_count_7d"],
+            historical_landslides=landslide_count,
+        )
+        new_level = fallback["risk_level"]
+        new_score = fallback["risk_score"]
+        # Promote "yellow" to "orange" when a critical crack is flagged
+        if new_level == "yellow" and features["critical_crack_flag"]:
+            new_level, new_score = "orange", max(new_score, 0.48)
 
     # Update zone in Atlas
     zone.risk_level   = new_level

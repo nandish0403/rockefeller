@@ -8,3 +8,6 @@ export const fetchZone = (id) =>
 
 export const updateZone = (id, data) =>
   api.patch(`/api/zones/${id}`, data).then((r) => r.data);
+
+export const fetchRiskLevels = (params = {}) =>
+  api.get("/api/risk-levels", { params }).then((r) => r.data);

@@ -1,8 +1,8 @@
 fastapi
 uvicorn[standard]
-beanie
-motor
-pymongo
+motor==3.7.0
+beanie==1.26.0
+pymongo==4.9.0
 pydantic[email]
 pydantic-settings
 python-jose[cryptography]

@@ -3,11 +3,11 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.models.alert import Alert
-from backend.app.models.user import User
-from backend.app.models.worker_presence import WorkerPresence
-from backend.app.models.zone import Zone
+from app.api.dependencies import get_current_user
+from app.models.alert import Alert
+from app.models.user import User
+from app.models.worker_presence import WorkerPresence
+from app.models.zone import Zone
 
 
 router = APIRouter(prefix="/api/presence", tags=["presence"])

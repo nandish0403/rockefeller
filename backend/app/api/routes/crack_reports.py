@@ -4,16 +4,16 @@ from typing import Optional, List
 from datetime import datetime
 import os, uuid
 import re
-from backend.app.models.crack_report import CrackReport
-from backend.app.models.alert import Alert, TriggerSource
-from backend.app.models.notification import NotificationType
-from backend.app.models.zone import Zone
-from backend.app.api.dependencies import get_current_user, require_admin, require_officer
-from backend.app.core.rule_engine import run_crack_check
-from backend.app.core.config import settings
-from backend.app.models.user import User
-from backend.app.services.notification_service import create_notifications_for_users
-from backend.app.services.crack_ai import score_crack_image
+from app.models.crack_report import CrackReport
+from app.models.alert import Alert, TriggerSource
+from app.models.notification import NotificationType
+from app.models.zone import Zone
+from app.api.dependencies import get_current_user, require_admin, require_officer
+from app.core.rule_engine import run_crack_check
+from app.core.config import settings
+from app.models.user import User
+from app.services.notification_service import create_notifications_for_users
+from app.services.crack_ai import score_crack_image
 
 router = APIRouter(prefix="/api/crack-reports", tags=["crack-reports"])
 

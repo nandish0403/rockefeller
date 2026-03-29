@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.core.config import settings
-from backend.app.models.user import User
-from backend.app.services.push_service import is_push_configured, save_subscription
+from app.api.dependencies import get_current_user
+from app.core.config import settings
+from app.models.user import User
+from app.services.push_service import is_push_configured, save_subscription
 
 
 router = APIRouter(prefix="/api/push", tags=["push"])

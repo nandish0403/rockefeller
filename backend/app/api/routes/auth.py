@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import timedelta
-from backend.app.schemas.user import RegisterRequest, LoginRequest, TokenResponse
-from backend.app.models.user import User
-from backend.app.core.security import hash_password, verify_password, create_access_token
-from backend.app.core.config import settings
-from backend.app.api.dependencies import get_current_user, require_admin
+from app.schemas.user import RegisterRequest, LoginRequest, TokenResponse
+from app.models.user import User
+from app.core.security import hash_password, verify_password, create_access_token
+from app.core.config import settings
+from app.api.dependencies import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

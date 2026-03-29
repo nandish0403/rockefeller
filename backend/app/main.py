@@ -3,28 +3,28 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from beanie import PydanticObjectId
-from backend.app.core.database import init_db, close_db
-from backend.app.core.security import decode_token
-from backend.app.api.routes.auth          import router as auth_router
-from backend.app.api.routes.zones         import router as zones_router
-from backend.app.api.routes.zones         import risk_levels_router
-from backend.app.api.routes.alerts        import router as alerts_router
-from backend.app.api.routes.reports       import router as reports_router
-from backend.app.api.routes.crack_reports import router as crack_reports_router
-from backend.app.api.routes.blast_events  import router as blast_events_router
-from backend.app.api.routes.weather       import router as weather_router
-from backend.app.api.routes.rainfall      import router as rainfall_router
-from backend.app.api.routes.notifications import router as notifications_router
-from backend.app.api.routes.push          import router as push_router
-from backend.app.api.routes.emergency     import router as emergency_router
-from backend.app.api.routes.presence      import router as presence_router
-from backend.app.api.routes.history       import router as history_router
-from backend.app.api.routes.users         import router as users_router
-from backend.app.services.ml_models import preload_models
-from backend.app.services.crack_ai import preload_crack_model
-from backend.app.services.forecast_runner import run_daily_risk_forecast
-from backend.app.websocket.manager import ws_manager
-from backend.app.models.user import User
+from app.core.database import init_db, close_db
+from app.core.security import decode_token
+from app.api.routes.auth          import router as auth_router
+from app.api.routes.zones         import router as zones_router
+from app.api.routes.zones         import risk_levels_router
+from app.api.routes.alerts        import router as alerts_router
+from app.api.routes.reports       import router as reports_router
+from app.api.routes.crack_reports import router as crack_reports_router
+from app.api.routes.blast_events  import router as blast_events_router
+from app.api.routes.weather       import router as weather_router
+from app.api.routes.rainfall      import router as rainfall_router
+from app.api.routes.notifications import router as notifications_router
+from app.api.routes.push          import router as push_router
+from app.api.routes.emergency     import router as emergency_router
+from app.api.routes.presence      import router as presence_router
+from app.api.routes.history       import router as history_router
+from app.api.routes.users         import router as users_router
+from app.services.ml_models import preload_models
+from app.services.crack_ai import preload_crack_model
+from app.services.forecast_runner import run_daily_risk_forecast
+from app.websocket.manager import ws_manager
+from app.models.user import User
 import os
 
 @asynccontextmanager
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     # Pull latest real-world data on every startup
     try:
-        from backend.app.ml.collectors.imd_collector  import run as imd_run
+        from app.ml.collectors.imd_collector  import run as imd_run
         await imd_run()
     except Exception as e:
         print(f"[Startup] Collector error (non-fatal): {e}")

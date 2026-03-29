@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from backend.app.core.rule_engine import get_zone_features
-from backend.app.models.risk_prediction import RiskPrediction
-from backend.app.models.zone import Zone
-from backend.app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
+from app.core.rule_engine import get_zone_features
+from app.models.risk_prediction import RiskPrediction
+from app.models.zone import Zone
+from app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
 
 
 async def run_daily_risk_forecast() -> int:

@@ -1,7 +1,7 @@
 import httpx
 import asyncio
 from datetime import datetime, timedelta
-from backend.app.models.weather_record import WeatherRecord
+from app.models.weather_record import WeatherRecord
 
 # Maharashtra districts with lat/lon for Open-Meteo API (free, no key needed)
 DISTRICTS = {

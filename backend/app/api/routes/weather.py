@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
-from backend.app.models.weather_record import WeatherRecord
-from backend.app.api.dependencies import get_current_user, require_officer
-from backend.app.core.rule_engine import run_rainfall_check
-from backend.app.models.user import User
+from app.models.weather_record import WeatherRecord
+from app.api.dependencies import get_current_user, require_officer
+from app.core.rule_engine import run_rainfall_check
+from app.models.user import User
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 

@@ -2,8 +2,8 @@ import json
 from typing import Iterable, List
 from datetime import datetime
 
-from backend.app.core.config import settings
-from backend.app.models.push_subscription import PushSubscription
+from app.core.config import settings
+from app.models.push_subscription import PushSubscription
 
 try:
     from pywebpush import WebPushException, webpush

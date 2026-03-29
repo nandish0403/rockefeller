@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from beanie import PydanticObjectId
 from datetime import datetime
 
-from backend.app.api.dependencies import require_admin
-from backend.app.core.security import hash_password
-from backend.app.models.user import User
-from backend.app.schemas.user import RegisterRequest, UserUpdateRequest
+from app.api.dependencies import require_admin
+from app.core.security import hash_password
+from app.models.user import User
+from app.schemas.user import RegisterRequest, UserUpdateRequest
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 

@@ -3,13 +3,13 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import require_officer
-from backend.app.models.alert import Alert, TriggerSource
-from backend.app.models.notification import NotificationType
-from backend.app.models.user import User
-from backend.app.models.zone import Zone
-from backend.app.services.notification_service import create_notifications_for_users
-from backend.app.websocket.manager import ws_manager
+from app.api.dependencies import require_officer
+from app.models.alert import Alert, TriggerSource
+from app.models.notification import NotificationType
+from app.models.user import User
+from app.models.zone import Zone
+from app.services.notification_service import create_notifications_for_users
+from app.websocket.manager import ws_manager
 
 
 router = APIRouter(prefix="/api/emergency", tags=["emergency"])

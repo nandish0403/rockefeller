@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.models.user import User
-from backend.app.models.zone import Zone
-from backend.app.services.ml_models import get_district_forecast
+from app.api.dependencies import get_current_user
+from app.models.user import User
+from app.models.zone import Zone
+from app.services.ml_models import get_district_forecast
 
 router = APIRouter(prefix="/api/rainfall", tags=["rainfall"])
 

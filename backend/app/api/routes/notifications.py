@@ -2,10 +2,10 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.models.notification import Notification
-from backend.app.models.user import User
-from backend.app.services.notification_service import notification_to_dict
+from app.api.dependencies import get_current_user
+from app.models.notification import Notification
+from app.models.user import User
+from app.services.notification_service import notification_to_dict
 
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])

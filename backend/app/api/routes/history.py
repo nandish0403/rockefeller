@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Query
 from datetime import datetime
 
-from backend.app.api.dependencies import get_current_user
-from backend.app.models.history import HistoricalLandslide
-from backend.app.models.user import User
+from app.api.dependencies import get_current_user
+from app.models.history import HistoricalLandslide
+from app.models.user import User
 
 
 router = APIRouter(prefix="/api/history", tags=["history"])

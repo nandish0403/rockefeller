@@ -1,7 +1,7 @@
 import httpx
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from backend.app.models.alert import Alert
+from app.models.alert import Alert
 
 SACHET_RSS = "https://sachet.ndma.gov.in/rss/alerts.xml"
 

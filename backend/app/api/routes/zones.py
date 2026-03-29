@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
-from backend.app.models.zone import Zone
-from backend.app.schemas.zone import ZoneUpdateRequest
-from backend.app.api.dependencies import get_current_user, require_officer
-from backend.app.models.user import User
-from backend.app.models.history import HistoricalLandslide
-from backend.app.core.rule_engine import get_zone_features, simple_risk_score
-from backend.app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
+from app.models.zone import Zone
+from app.schemas.zone import ZoneUpdateRequest
+from app.api.dependencies import get_current_user, require_officer
+from app.models.user import User
+from app.models.history import HistoricalLandslide
+from app.core.rule_engine import get_zone_features, simple_risk_score
+from app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
 
 router = APIRouter(prefix="/api/zones", tags=["zones"])
 

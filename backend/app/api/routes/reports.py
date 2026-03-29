@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, 
 from typing import Optional
 from datetime import datetime
 import os, shutil, uuid
-from backend.app.models.report import Report
-from backend.app.models.zone import Zone
-from backend.app.api.dependencies import get_current_user
-from backend.app.core.config import settings
-from backend.app.models.user import User
+from app.models.report import Report
+from app.models.zone import Zone
+from app.api.dependencies import get_current_user
+from app.core.config import settings
+from app.models.user import User
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 

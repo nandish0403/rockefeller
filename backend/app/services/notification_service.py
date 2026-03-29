@@ -1,8 +1,8 @@
 from typing import Iterable, List, Optional
 
-from backend.app.models.notification import Notification, NotificationType
-from backend.app.services.push_service import send_push_to_users
-from backend.app.websocket.manager import ws_manager
+from app.models.notification import Notification, NotificationType
+from app.services.push_service import send_push_to_users
+from app.websocket.manager import ws_manager
 
 
 def notification_to_dict(n: Notification) -> dict:

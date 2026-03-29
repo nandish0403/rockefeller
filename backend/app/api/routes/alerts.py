@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
-from backend.app.models.alert import Alert
-from backend.app.schemas.alert import CreateAlertRequest
-from backend.app.api.dependencies import get_current_user, require_officer
-from backend.app.models.user import User
+from app.models.alert import Alert
+from app.schemas.alert import CreateAlertRequest
+from app.api.dependencies import get_current_user, require_officer
+from app.models.user import User
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 

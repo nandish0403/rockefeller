@@ -1,21 +1,21 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from backend.app.core.config import settings
+from app.core.config import settings
 
-from backend.app.models.user import User
-from backend.app.models.zone import Zone
-from backend.app.models.alert import Alert
-from backend.app.models.report import Report
-from backend.app.models.crack_report import CrackReport
-from backend.app.models.blast_event import BlastEvent
-from backend.app.models.exploration import ExplorationLog
-from backend.app.models.weather_record import WeatherRecord
-from backend.app.models.history import HistoricalLandslide
-from backend.app.models.risk_prediction import RiskPrediction
-from backend.app.models.user_location import UserLocation
-from backend.app.models.worker_presence import WorkerPresence
-from backend.app.models.notification import Notification
-from backend.app.models.push_subscription import PushSubscription
+from app.models.user import User
+from app.models.zone import Zone
+from app.models.alert import Alert
+from app.models.report import Report
+from app.models.crack_report import CrackReport
+from app.models.blast_event import BlastEvent
+from app.models.exploration import ExplorationLog
+from app.models.weather_record import WeatherRecord
+from app.models.history import HistoricalLandslide
+from app.models.risk_prediction import RiskPrediction
+from app.models.user_location import UserLocation
+from app.models.worker_presence import WorkerPresence
+from app.models.notification import Notification
+from app.models.push_subscription import PushSubscription
 
 client = None
 

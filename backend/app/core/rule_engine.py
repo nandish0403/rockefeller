@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
-from backend.app.models.zone import Zone
-from backend.app.models.alert import Alert
-from backend.app.models.blast_event import BlastEvent
-from backend.app.models.crack_report import CrackReport
-from backend.app.models.weather_record import WeatherRecord
-from backend.app.models.history import HistoricalLandslide
-from backend.app.services.ml_models import predict_zone_risk
+from app.models.zone import Zone
+from app.models.alert import Alert
+from app.models.blast_event import BlastEvent
+from app.models.crack_report import CrackReport
+from app.models.weather_record import WeatherRecord
+from app.models.history import HistoricalLandslide
+from app.services.ml_models import predict_zone_risk
 
 # ---------------------------------------------------------------------------
 # Simple weighted-sum risk formula (used as fallback when ML model unavailable)

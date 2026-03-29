@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api";
 
 const TOKEN_KEY = "token";
 const USER_KEY = "currentUser";
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
     const controller = new AbortController();
 
     axios
-      .get("http://localhost:8000/api/auth/me", {
+      .get(`${API_BASE_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       })
@@ -61,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await axios.post(
-      "http://localhost:8000/api/auth/login",
+      `${API_BASE_URL}/api/auth/login`,
       { email, password }
     );
     const access_token = res.data.access_token;
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }) => {
       return user;
     }
 
-    const meRes = await axios.get("http://localhost:8000/api/auth/me", {
+    const meRes = await axios.get(`${API_BASE_URL}/api/auth/me`, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
     setCurrentUser(meRes.data);

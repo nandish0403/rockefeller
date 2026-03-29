@@ -425,8 +425,10 @@ function FieldWorkerUpload() {
   const [zones,      setZones]      = useState([]);
   const [zoneSearch, setZoneSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitMode, setSubmitMode] = useState(null);
   const [success,    setSuccess]    = useState(false);
   const [submitId,   setSubmitId]   = useState("");
+  const [submitMeta, setSubmitMeta] = useState(null);
   const fileRef = useRef(null);
 
   // form state
@@ -477,14 +479,16 @@ function FieldWorkerUpload() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (mode) => {
     setSubmitting(true);
+    setSubmitMode(mode);
     try {
       const fd = new FormData();
       fd.append("zone_id",    form.zone_id);
       fd.append("zone_name",  form.zone_name);
       fd.append("crack_type", form.crack_type);
       fd.append("severity",   form.severity);
+      fd.append("submission_mode", mode);
       if (form.remarks) fd.append("remarks", form.remarks);
       if (form.coords)  fd.append("coords", JSON.stringify(form.coords));
       if (form.photo)   fd.append("photo", form.photo);
@@ -492,15 +496,19 @@ function FieldWorkerUpload() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setSubmitId(data?.id?.slice(-8).toUpperCase() ?? "—");
+      setSubmitMeta(data ?? null);
       setSuccess(true);
     } catch { alert("Submit failed. Try again."); }
-    finally { setSubmitting(false); }
+    finally {
+      setSubmitting(false);
+      setSubmitMode(null);
+    }
   };
 
   const resetAll = () => {
     setForm({ zone_id:"", zone_name:"", zone_risk:"", crack_type:"tension_crack",
       severity:"low", remarks:"", photo:null, photoPreview:null, coords:null });
-    setStep(0); setSuccess(false); setSubmitId("");
+    setStep(0); setSuccess(false); setSubmitId(""); setSubmitMeta(null); setSubmitMode(null);
   };
 
   const canNext = () => {
@@ -669,25 +677,47 @@ function FieldWorkerUpload() {
                 Continue →
               </button>
             ) : (
-              <button onClick={handleSubmit} disabled={submitting} style={{
-                padding: "11px 36px", borderRadius: 2, border: "none",
-                background: "linear-gradient(135deg,#4edea3,#00a572)",
-                color: "#002113", fontSize: 10, fontWeight: 800,
-                textTransform: "uppercase", letterSpacing: "0.15em",
-                cursor: submitting ? "wait" : "pointer",
-                fontFamily: "Inter", transition: "all 0.25s",
-                boxShadow: "0 4px 20px rgba(78,222,163,0.25)",
-                opacity: submitting ? 0.7 : 1,
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
-                {submitting && (
-                  <span style={{ width: 10, height: 10,
-                    border: "2px solid rgba(0,33,19,0.3)", borderTopColor: "#002113",
-                    borderRadius: "50%", display: "inline-block",
-                    animation: "crSpin 0.7s linear infinite" }} />
-                )}
-                {submitting ? "Submitting…" : "Submit to AI"}
-              </button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => handleSubmit("admin")} disabled={submitting} style={{
+                  padding: "11px 20px", borderRadius: 2,
+                  border: "1px solid rgba(255,179,173,0.25)",
+                  background: "rgba(42,42,42,0.9)",
+                  color: "#ffb3ad", fontSize: 10, fontWeight: 800,
+                  textTransform: "uppercase", letterSpacing: "0.12em",
+                  cursor: submitting ? "wait" : "pointer",
+                  fontFamily: "Inter", transition: "all 0.25s",
+                  opacity: submitting ? 0.7 : 1,
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  {submitting && submitMode === "admin" && (
+                    <span style={{ width: 10, height: 10,
+                      border: "2px solid rgba(255,179,173,0.3)", borderTopColor: "#ffb3ad",
+                      borderRadius: "50%", display: "inline-block",
+                      animation: "crSpin 0.7s linear infinite" }} />
+                  )}
+                  {submitting && submitMode === "admin" ? "Submitting…" : "Submit to Admin"}
+                </button>
+
+                <button onClick={() => handleSubmit("ai")} disabled={submitting} style={{
+                  padding: "11px 20px", borderRadius: 2, border: "none",
+                  background: "linear-gradient(135deg,#4edea3,#00a572)",
+                  color: "#002113", fontSize: 10, fontWeight: 800,
+                  textTransform: "uppercase", letterSpacing: "0.15em",
+                  cursor: submitting ? "wait" : "pointer",
+                  fontFamily: "Inter", transition: "all 0.25s",
+                  boxShadow: "0 4px 20px rgba(78,222,163,0.25)",
+                  opacity: submitting ? 0.7 : 1,
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  {submitting && submitMode === "ai" && (
+                    <span style={{ width: 10, height: 10,
+                      border: "2px solid rgba(0,33,19,0.3)", borderTopColor: "#002113",
+                      borderRadius: "50%", display: "inline-block",
+                      animation: "crSpin 0.7s linear infinite" }} />
+                  )}
+                  {submitting && submitMode === "ai" ? "Submitting…" : "Submit to AI"}
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -767,7 +797,38 @@ function FieldWorkerUpload() {
               marginBottom: 32, lineHeight: 1.7 }}>
               Incident <span style={{ color: "#ffb3ad", fontWeight: 700 }}>
                 #RCK-{submitId}
-              </span> has been recorded and queued for AI analysis.
+              </span>{" "}
+              {submitMeta?.submission_mode === "ai"
+                ? "has been AI-scored and shared with admins."
+                : "has been submitted directly to admins for manual review."}
+            </p>
+
+            {submitMeta?.submission_mode === "ai" && submitMeta?.ai_summary && (
+              <div style={{
+                marginBottom: 18,
+                textAlign: "left",
+                background: "rgba(78,222,163,0.08)",
+                border: "1px solid rgba(78,222,163,0.2)",
+                borderRadius: 4,
+                padding: "12px 14px",
+              }}>
+                <div style={{ fontSize: 10, color: "#4edea3", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>
+                  AI Output
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 11, color: "#e5e2e1" }}>
+                  <span>Class: {submitMeta.ai_summary.ai_severity_class}</span>
+                  <span>Risk: {Math.round((submitMeta.ai_summary.ai_risk_score || 0) * 100)}%</span>
+                  <span>Confidence: {Math.round((submitMeta.ai_summary.confidence || 0) * 100)}%</span>
+                  <span>Critical Flag: {submitMeta.ai_summary.critical_crack_flag}</span>
+                </div>
+                <p style={{ margin: "8px 0 0", fontSize: 10, color: "#9bf3c9" }}>
+                  {submitMeta.ai_summary.note}
+                </p>
+              </div>
+            )}
+
+            <p style={{ margin: "0 0 20px", fontSize: 10, color: "#e4beba", opacity: 0.8 }}>
+              Admin notifications sent: {submitMeta?.admin_notified ?? 0}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <button onClick={() => setSuccess(false)} style={{
@@ -1129,7 +1190,7 @@ function StepReview({ form, user }) {
           style={{ fontSize: 18, color: "#4edea3",
             fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
         <p style={{ fontSize: 11, color: "#4edea3", margin: 0, lineHeight: 1.5 }}>
-          On submit, your photo will be sent to the AI scoring pipeline. Results appear within 30–60 seconds.
+          Choose Submit to AI for model scoring + admin notification, or Submit to Admin for manual review only.
         </p>
       </div>
     </div>

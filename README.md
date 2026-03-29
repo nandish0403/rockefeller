@@ -152,10 +152,27 @@ MONGODB_URL=mongodb://localhost:27017
 DATABASE_NAME=rockefeller
 SECRET_KEY=changeme
 ALGORITHM=HS256
+CORS_ORIGINS=http://localhost:5173,https://rockefeller-production.up.railway.app
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.1-pro-preview
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_CLAIMS_SUBJECT=mailto:admin@rockefeller.local
 ```
+
+Create root `.env` for deployed frontend API base URL:
+
+```env
+VITE_API_URL=https://rockefeller-production.up.railway.app
+```
+
+Create root `.env.local` for local frontend development:
+
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+Frontend API calls read this through `src/config/api.js`.
 
 ---
 
@@ -189,9 +206,10 @@ VAPID_CLAIMS_SUBJECT=mailto:admin@rockefeller.local
 |--------|------|-------------|
 | GET    | /api/reports | Field reports |
 | POST   | /api/reports | Upload field report with photo |
+| POST   | /api/reports/generate-ai-draft | Generate AI draft text for field report form |
 | GET    | /api/reports/{id} | Report detail |
 | GET    | /api/crack-reports | Crack reports |
-| POST   | /api/crack-reports | Submit crack report with photo |
+| POST   | /api/crack-reports | Submit crack report with `submission_mode=ai` or `submission_mode=admin` |
 | PATCH  | /api/crack-reports/{id}/verify | Verify (admin) |
 | PATCH  | /api/crack-reports/{id}/reject | Reject (admin) |
 

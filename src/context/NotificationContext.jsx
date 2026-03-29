@@ -8,6 +8,7 @@ import {
   markNotificationRead,
 } from "../api/notifications";
 import { getVapidPublicKey, subscribePush } from "../api/push";
+import { API_BASE_URL } from "@/config/api";
 
 const NotificationContext = createContext({
   notifications: [],
@@ -85,7 +86,8 @@ export function NotificationProvider({ children }) {
       wsRef.current = null;
     }
 
-    const ws = new WebSocket(`ws://localhost:8000/ws/${currentUser.id}?token=${encodeURIComponent(token)}`);
+    const wsBaseUrl = API_BASE_URL.replace(/^http/i, "ws");
+    const ws = new WebSocket(`${wsBaseUrl}/ws/${currentUser.id}?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

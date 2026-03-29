@@ -25,6 +25,7 @@ from app.services.crack_ai import preload_crack_model
 from app.services.forecast_runner import run_daily_risk_forecast
 from app.websocket.manager import ws_manager
 from app.models.user import User
+from app.core.config import settings
 import os
 
 @asynccontextmanager
@@ -62,9 +63,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GeoAlert API", version="2.0.0", lifespan=lifespan)
 
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

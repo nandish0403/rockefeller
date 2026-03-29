@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     REDIS_URL: str = "redis://localhost:6379"
+    CORS_ORIGINS: str = "http://localhost:5173,https://rockefeller-production.up.railway.app"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.1-pro-preview"
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 10
     RAINFALL_YELLOW_THRESHOLD_MM: float = 150

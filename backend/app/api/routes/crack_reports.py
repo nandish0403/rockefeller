@@ -4,6 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 import os, uuid
 import re
+import json
 from app.models.crack_report import CrackReport
 from app.models.alert import Alert, TriggerSource
 from app.models.notification import NotificationType
@@ -167,6 +168,40 @@ def crack_to_dict(c: CrackReport) -> dict:
         "created_at":        c.created_at.isoformat() if c.created_at else None,
     }
 
+
+async def _notify_admins_new_crack(
+    report: CrackReport,
+    *,
+    submission_mode: str,
+) -> int:
+    admins = await User.find(User.role == "admin").to_list()
+    if not admins:
+        admins = await User.find(User.role == "safety_officer").to_list()
+
+    admin_ids = [str(admin.id) for admin in admins]
+    if not admin_ids:
+        return 0
+
+    if submission_mode == "ai" and report.ai_risk_score is not None:
+        score_pct = int(round(float(report.ai_risk_score) * 100))
+        message = (
+            f"{report.zone_name}: new AI-scored crack report by {report.reported_by} "
+            f"({report.ai_severity_class}, risk {score_pct}%)."
+        )
+    else:
+        message = f"{report.zone_name}: new crack report submitted by {report.reported_by} for manual review."
+
+    await create_notifications_for_users(
+        admin_ids,
+        title="New Crack Report",
+        message=message,
+        zone_id=report.zone_id,
+        zone_name=report.zone_name,
+        notif_type=NotificationType.warning,
+        send_push=True,
+    )
+    return len(admin_ids)
+
 @router.get("")
 async def get_crack_reports(
     zone_id:  Optional[str] = Query(None),
@@ -196,7 +231,9 @@ async def create_crack_report(
     severity:    str        = Form("medium"),
     remarks:     str        = Form(""),
     reported_by: str        = Form(""),
-    photo:       UploadFile = File(...),
+    coords:      Optional[str] = Form(None),
+    submission_mode: str = Form("ai"),
+    photo:       UploadFile = File(None),
     current_user: User      = Depends(get_current_user),
 ):
     zone = await _resolve_zone(zone_id)
@@ -206,19 +243,32 @@ async def create_crack_report(
     # Normalize crack_type to valid enum value
     normalized_type = CRACK_TYPE_MAP.get(crack_type.lower(), "other")
 
-    if not photo.filename:
+    mode = (submission_mode or "ai").strip().lower()
+    if mode not in {"ai", "admin"}:
+        raise HTTPException(status_code=400, detail="submission_mode must be 'ai' or 'admin'")
+
+    if not photo or not photo.filename:
         raise HTTPException(status_code=400, detail="Photo is required")
 
     photo_bytes = await photo.read()
     if not photo_bytes:
         raise HTTPException(status_code=400, detail="Photo is empty")
 
-    try:
-        ai_result = score_crack_image(photo_bytes)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid crack image: {exc}")
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Crack AI inference failed: {exc}")
+    parsed_coords = None
+    if coords:
+        try:
+            parsed_coords = json.loads(coords)
+        except Exception:
+            parsed_coords = None
+
+    ai_result = None
+    if mode == "ai":
+        try:
+            ai_result = score_crack_image(photo_bytes)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid crack image: {exc}")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Crack AI inference failed: {exc}")
 
     ext = os.path.splitext(photo.filename)[1] or ".jpg"
     filename = f"{uuid.uuid4()}{ext}"
@@ -233,23 +283,41 @@ async def create_crack_report(
         zone_name         = zone.name,
         reported_by       = reported_by or current_user.name,
         reporter_user_id  = str(current_user.id),
+        coords            = parsed_coords,
         crack_type        = normalized_type,
-        severity          = ai_result["ai_severity_class"],
-        ai_severity_class = ai_result["ai_severity_class"],
-        ai_risk_score     = ai_result["ai_risk_score"],
-        confidence        = ai_result["confidence"],
-        critical_crack_flag = ai_result["critical_crack_flag"],
+        severity          = ai_result["ai_severity_class"] if ai_result else severity,
+        ai_severity_class = ai_result["ai_severity_class"] if ai_result else None,
+        ai_risk_score     = ai_result["ai_risk_score"] if ai_result else None,
+        confidence        = ai_result["confidence"] if ai_result else None,
+        critical_crack_flag = ai_result["critical_crack_flag"] if ai_result else 0,
         photo_url         = photo_url,
         remarks           = remarks,
-        status            = "ai_scored",
+        status            = "ai_scored" if ai_result else "pending",
         created_at        = datetime.utcnow(),
     )
     await report.insert()
 
-    # Trigger Model 2 zone risk update based on fresh crack report.
-    await run_crack_check(str(zone.id), float(ai_result["ai_risk_score"]))
+    # Trigger Model 2 zone risk update only for AI-scored submissions.
+    if ai_result:
+        await run_crack_check(str(zone.id), float(ai_result["ai_risk_score"]))
 
-    return crack_to_dict(report)
+    admin_notified = await _notify_admins_new_crack(report, submission_mode=mode)
+
+    response = crack_to_dict(report)
+    response["submission_mode"] = mode
+    response["admin_notified"] = admin_notified
+    if ai_result:
+        response["ai_summary"] = {
+            "ai_severity_class": ai_result["ai_severity_class"],
+            "ai_risk_score": ai_result["ai_risk_score"],
+            "confidence": ai_result["confidence"],
+            "critical_crack_flag": ai_result["critical_crack_flag"],
+            "note": "AI score generated and forwarded to admin review queue.",
+        }
+    else:
+        response["ai_summary"] = None
+
+    return response
 
 
 @router.patch("/verify-bulk")

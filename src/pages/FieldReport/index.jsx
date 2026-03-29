@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import api from "../../api/axios";
 import { fetchZones } from "../../api/zones";
+import { generateReportAIDraft } from "../../api/reports";
 
 
 
@@ -40,6 +41,8 @@ export default function FieldReportPage() {
   const [files,     setFiles]     = useState([]);        // photo attachments
   const [previews,  setPreviews]  = useState([]);
   const [submitting,setSubmitting]= useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiStatus, setAiStatus] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error,     setError]     = useState("");
   const [step,      setStep]      = useState(1);         // 1 = details, 2 = review
@@ -91,6 +94,48 @@ export default function FieldReportPage() {
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleGenerateWithAI = async () => {
+    if (!form.zone_id) {
+      setError("Select a zone before generating with AI.");
+      return;
+    }
+    setGeneratingAI(true);
+    setError("");
+    setAiStatus("");
+    try {
+      const selectedZone = zones.find((z) => z.id === form.zone_id);
+      const { draft } = await generateReportAIDraft({
+        zone_id: form.zone_id,
+        zone_name: selectedZone?.name,
+        report_type: form.report_type,
+        severity: form.severity,
+        title: form.title,
+        description: form.description,
+        observations: form.observations,
+        location_detail: form.location_detail,
+        weather_condition: form.weather_condition,
+      });
+
+      setForm((prev) => ({
+        ...prev,
+        title: draft?.title || prev.title,
+        description: draft?.description || prev.description,
+        observations: draft?.observations || prev.observations,
+        severity: draft?.severity || prev.severity,
+      }));
+
+      setAiStatus(
+        draft?.source === "gemini"
+          ? "AI draft generated from Gemini. Review before submit."
+          : "AI draft generated from fallback template. Add GEMINI_API_KEY for Gemini output."
+      );
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Failed to generate AI draft.");
+    } finally {
+      setGeneratingAI(false);
     }
   };
 
@@ -183,7 +228,48 @@ export default function FieldReportPage() {
             </p>
           </div>
         </div>
+        <div style={{ marginTop: 14 }}>
+          <button
+            onClick={handleGenerateWithAI}
+            disabled={generatingAI}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 2,
+              border: "1px solid rgba(78,222,163,0.35)",
+              background: "rgba(78,222,163,0.08)",
+              color: "#4edea3",
+              fontSize: 10,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.12em",
+              cursor: generatingAI ? "wait" : "pointer",
+              fontFamily: "Inter",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14, fontVariationSettings: "'FILL' 1" }}>
+              auto_awesome
+            </span>
+            {generatingAI ? "Generating..." : "Generate with AI"}
+          </button>
+        </div>
       </header>
+
+      {aiStatus && (
+        <div style={{
+          background: "rgba(78,222,163,0.1)",
+          border: "1px solid rgba(78,222,163,0.25)",
+          borderRadius: 2, padding: "10px 16px",
+          fontSize: 11, color: "#4edea3", marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 8,
+          animation: "frFadeUp 0.3s ease both",
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+          {aiStatus}
+        </div>
+      )}
 
       {/* ── Step indicator ── */}
       <div style={{

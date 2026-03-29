@@ -2,13 +2,51 @@ from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, 
 from typing import Optional
 from datetime import datetime
 import os, shutil, uuid
+from pydantic import BaseModel
 from app.models.report import Report
 from app.models.zone import Zone
 from app.api.dependencies import get_current_user
 from app.core.config import settings
 from app.models.user import User
+from app.services.report_ai import generate_report_draft
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+
+class ReportAIDraftRequest(BaseModel):
+    zone_id: Optional[str] = None
+    zone_name: Optional[str] = None
+    report_type: Optional[str] = None
+    severity: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    observations: Optional[str] = None
+    location_detail: Optional[str] = None
+    weather_condition: Optional[str] = None
+
+
+@router.post("/generate-ai-draft")
+async def generate_ai_draft(
+    body: ReportAIDraftRequest,
+    current_user: User = Depends(get_current_user),
+):
+    payload = body.model_dump(exclude_none=True)
+
+    if body.zone_id and "zone_name" not in payload:
+        zone = await Zone.get(body.zone_id)
+        if zone:
+            payload["zone_name"] = zone.name
+
+    try:
+        draft = generate_report_draft(payload)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {
+        "draft": draft,
+        "generated_at": datetime.utcnow().isoformat(),
+        "generated_for": current_user.name,
+    }
 
 def report_to_dict(r: Report) -> dict:
     return {

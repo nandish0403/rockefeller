@@ -12,6 +12,7 @@ import Reports from "../pages/Reports";
 import ReportDetailsPage from "../pages/ReportDetails";
 import CrackReportDetailsPage from "../pages/CrackReportDetails";
 import Analytics from "../pages/Analytics";
+import Predictions from "../pages/Predictions";
 import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
 import FieldReportPage from "../pages/FieldReport";
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
       { path: "reports",          element: <Reports /> },
       { path: "reports/:id",      element: <ReportDetailsPage /> },
       { path: "analytics",        element: <Analytics /> },
+      { path: "predictions",      element: <Predictions /> },
       { path: "iot-sensors",      element: <IoTSensorsPage /> },
       { path: "upload",           element: <Upload /> },
       { path: "profile",          element: <Profile /> },

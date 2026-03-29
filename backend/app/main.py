@@ -20,7 +20,8 @@ from app.api.routes.emergency     import router as emergency_router
 from app.api.routes.presence      import router as presence_router
 from app.api.routes.history       import router as history_router
 from app.api.routes.users         import router as users_router
-from app.services.ml_models import preload_models
+from app.api.routes.predictions   import router as predictions_router
+from app.services.ml_models import preload_models, district_model_count
 from app.services.crack_ai import preload_crack_model
 from app.services.forecast_runner import run_daily_risk_forecast
 from app.websocket.manager import ws_manager
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI):
     try:
         preload_models()
         print("[Startup] Rockefeller models loaded ✅")
+        print(f"[Startup] District rainfall models found: {district_model_count()} ✅")
     except Exception as e:
         print(f"[Startup] Rockefeller model preload failed (non-fatal): {e}")
 
@@ -93,6 +95,7 @@ app.include_router(emergency_router)
 app.include_router(presence_router)
 app.include_router(history_router)
 app.include_router(users_router)
+app.include_router(predictions_router)
 
 
 @app.websocket("/ws/{user_id}")

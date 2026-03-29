@@ -1,10 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from "react-leaflet";
+import DeckGL from "@deck.gl/react";
+import { FlyToInterpolator } from "@deck.gl/core";
+import { PolygonLayer } from "@deck.gl/layers";
+import { Map as MapLibreMap } from "react-map-gl/maplibre";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { fetchZones } from "../../api/zones";
 import { fetchAlerts } from "../../api/alerts";
 import { fetchHistoricalEvents } from "../../api/history";
-import { T } from "../../theme/tokens";
 
 // ── Risk colours ───────────────────────────────────────────────
 const RISK = {
@@ -14,59 +18,39 @@ const RISK = {
   green:  { fill: "#4edea3", stroke: "#4edea3", label: "Stable",    badge: "#4edea3" },
 };
 
+const ZOOM_3D_THRESHOLD = 11.5;
+const PITCH_3D = 50;
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || "";
+
 const getZoneCoordinates = (zone) => zone?.latlngs || zone?.coordinates || [];
 
-// ── Zoom controller component ──────────────────────────────────
-function MapControls({ onLocate }) {
-  const map = useMap();
-  return (
-    <div style={{
-      position: "absolute",
-      bottom: 64, right: selectedPanel ? 348 : 24,
-      zIndex: 1000, display: "flex", flexDirection: "column", gap: 8,
-    }}>
-      <div style={{
-        display: "flex", flexDirection: "column",
-        background: "rgba(28,27,27,0.9)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(91,64,62,0.2)",
-        borderRadius: 2, overflow: "hidden",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-      }}>
-        {[
-          { icon: "add",         action: () => map.zoomIn()  },
-          { icon: "remove",      action: () => map.zoomOut() },
-          { icon: "my_location", action: () => map.setView([19.7515, 75.7139], 7) },
-        ].map(({ icon, action }, i) => (
-          <button key={icon} onClick={action} style={{
-            padding: "10px 12px", background: "transparent",
-            border: "none",
-            borderBottom: i < 2 ? "1px solid rgba(91,64,62,0.15)" : "none",
-            color: "#e4beba", cursor: "pointer", lineHeight: 1,
-            transition: "all 0.2s",
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = "#3a3939"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            <span className="material-symbols-outlined"
-              style={{ fontSize: 16 }}>{icon}</span>
-          </button>
-        ))}
-      </div>
-      <button style={{
-        padding: "10px 12px", background: "rgba(28,27,27,0.9)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(91,64,62,0.2)",
-        borderRadius: 2, color: "#e4beba", cursor: "pointer",
-        lineHeight: 1, transition: "all 0.2s",
-      }}
-        onMouseEnter={e => e.currentTarget.style.color = "#ffb3ad"}
-        onMouseLeave={e => e.currentTarget.style.color = "#e4beba"}>
-        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>layers</span>
-      </button>
-    </div>
-  );
-}
-// need selectedPanel in scope — will inline below
+const toRingLngLat = (zone) => {
+  const points = getZoneCoordinates(zone);
+  if (!Array.isArray(points) || points.length < 3) return null;
+
+  const ring = points
+    .map((p) => {
+      if (!Array.isArray(p) || p.length < 2) return null;
+      const lat = Number(p[0]);
+      const lng = Number(p[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return [lng, lat];
+    })
+    .filter(Boolean);
+
+  if (ring.length < 3) return null;
+  const [fx, fy] = ring[0];
+  const [lx, ly] = ring[ring.length - 1];
+  if (fx !== lx || fy !== ly) ring.push([fx, fy]);
+  return ring;
+};
+
+const riskHeight = (riskLevel) => {
+  if (riskLevel === "red") return 1500;
+  if (riskLevel === "orange") return 1000;
+  if (riskLevel === "yellow") return 550;
+  return 180;
+};
 
 // ── Mini bar chart for movement velocity ───────────────────────
 function VelocityChart({ risk }) {
@@ -100,12 +84,50 @@ export default function MapViewPage() {
   const [mounted,    setMounted]    = useState(false);
   const [historyPayload, setHistoryPayload] = useState({ count: 0, season_summary: { monsoon: 0, dry: 0 }, events: [] });
   const [replayYear, setReplayYear] = useState("all");
+  const [mapReady, setMapReady] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState(null);
+  const [viewState, setViewState] = useState({
+    longitude: 75.7139,
+    latitude: 19.7515,
+    zoom: 7,
+    pitch: 0,
+    bearing: 0,
+  });
+  const auto3DRef = useRef(false);
 
   // Filter state
   const [district,    setDistrict]    = useState("All");
   const [activeRisks, setActiveRisks] = useState(["red","orange","yellow","green"]);
 
-  const CENTER = [19.7515, 75.7139];
+  const mapStyle = useMemo(() => ({
+    version: 8,
+    sources: {
+      satellite: {
+        type: "raster",
+        tiles: [
+          `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`,
+        ],
+        tileSize: 256,
+        attribution: "MapTiler",
+      },
+      terrainSource: {
+        type: "raster-dem",
+        url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
+        tileSize: 256,
+      },
+    },
+    layers: [
+      {
+        id: "satellite-base",
+        type: "raster",
+        source: "satellite",
+      },
+    ],
+    terrain: {
+      source: "terrainSource",
+      exaggeration: 1.2,
+    },
+  }), []);
 
   useEffect(() => {
     setTimeout(() => setMounted(true), 60);
@@ -126,6 +148,103 @@ export default function MapViewPage() {
     const riskOk     = activeRisks.includes(z.risk_level);
     return districtOk && riskOk;
   });
+
+  const zoneFeatures = useMemo(() => {
+    return filteredZones
+      .map((zone) => {
+        const ring = toRingLngLat(zone);
+        if (!ring) return null;
+        return {
+          ...zone,
+          polygon: ring,
+        };
+      })
+      .filter(Boolean);
+  }, [filteredZones]);
+
+  const is3DView = viewState.zoom >= ZOOM_3D_THRESHOLD || viewState.pitch > 5;
+  const pulse = 0.82;
+
+  const polygonLayer = useMemo(() => new PolygonLayer({
+    id: "zones-polygons",
+    data: zoneFeatures,
+    pickable: true,
+    extruded: is3DView,
+    wireframe: false,
+    filled: true,
+    stroked: true,
+    getPolygon: (d) => d.polygon,
+    getFillColor: (d) => {
+      const hex = RISK[d.risk_level]?.fill || "#ffb3ad";
+      const rgb = [
+        parseInt(hex.slice(1, 3), 16),
+        parseInt(hex.slice(3, 5), 16),
+        parseInt(hex.slice(5, 7), 16),
+      ];
+      return [rgb[0], rgb[1], rgb[2], 105];
+    },
+    getLineColor: (d) => {
+      const hex = RISK[d.risk_level]?.stroke || "#ffb3ad";
+      const rgb = [
+        parseInt(hex.slice(1, 3), 16),
+        parseInt(hex.slice(3, 5), 16),
+        parseInt(hex.slice(5, 7), 16),
+      ];
+      const glow = d.risk_level === "red" || d.risk_level === "orange";
+      const alpha = glow ? Math.round(190 + 55 * pulse) : 220;
+      return [rgb[0], rgb[1], rgb[2], alpha];
+    },
+    getLineWidth: (d) => {
+      const isGlow = d.risk_level === "red" || d.risk_level === "orange";
+      if (selected?.id === d.id) return 3.2;
+      return isGlow ? 2.2 + (0.9 * pulse) : 1.6;
+    },
+    lineWidthUnits: "pixels",
+    lineWidthMinPixels: 1.2,
+    getElevation: (d) => riskHeight(d.risk_level),
+    material: {
+      ambient: 0.35,
+      diffuse: 0.6,
+      shininess: 14,
+      specularColor: [40, 40, 40],
+    },
+    updateTriggers: {
+      getLineColor: [pulse, selected?.id],
+      getLineWidth: [pulse, selected?.id],
+      getFillColor: [selected?.id],
+      extruded: [is3DView],
+    },
+    onClick: (info) => {
+      if (info?.object) handleZoneClick(info.object);
+    },
+    onHover: (info) => {
+      if (!info?.object) {
+        setHoverInfo(null);
+        return;
+      }
+      setHoverInfo({
+        x: info.x,
+        y: info.y,
+        zone: info.object,
+      });
+    },
+  }), [zoneFeatures, is3DView, selected?.id, pulse]);
+
+  const handleViewStateChange = ({ viewState: nextView, interactionState }) => {
+    setViewState(nextView);
+
+    const shouldBe3D = nextView.zoom >= ZOOM_3D_THRESHOLD;
+    if (shouldBe3D === auto3DRef.current) return;
+    if (interactionState?.isRotating) return;
+
+    auto3DRef.current = shouldBe3D;
+    setViewState({
+      ...nextView,
+      pitch: shouldBe3D ? PITCH_3D : 0,
+      transitionDuration: 750,
+      transitionInterpolator: new FlyToInterpolator({ speed: 1.1 }),
+    });
+  };
 
   const zoneAlerts = selected
     ? alerts.filter(a => a.zone_id === selected.id)
@@ -168,48 +287,110 @@ export default function MapViewPage() {
       transition: "left 0.28s ease",
     }}>
 
-      {/* ── Actual Leaflet Map ── */}
-      <MapContainer
-        center={CENTER} zoom={7}
-        style={{ position: "absolute", inset: 0, zIndex: 0 }}
-        zoomControl={false}
-      >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution="&copy; CartoDB"
-        />
+      {/* ── Deck.gl + MapLibre map canvas ── */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        {!mapReady && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 2,
+            background: "linear-gradient(120deg,#1a1919 25%,#272525 45%,#1a1919 65%)",
+            backgroundSize: "220% 100%",
+            animation: "mapSkeleton 1.5s linear infinite",
+          }} />
+        )}
 
-        {filteredZones.map(zone => getZoneCoordinates(zone)?.length > 0 && (
-          <Polygon
-            key={zone.id}
-            className={`zone-poly zone-risk-${zone.risk_level || "green"}`}
-            positions={getZoneCoordinates(zone)}
-            pathOptions={{
-              fillColor:   RISK[zone.risk_level]?.fill   || "#ffb3ad",
-              color:       RISK[zone.risk_level]?.stroke || "#ffb3ad",
-              fillOpacity: selected?.id === zone.id
-                ? 0.68
-                : zone.risk_level === "red"
-                  ? 0.4
-                  : zone.risk_level === "orange"
-                    ? 0.34
-                    : 0.3,
-              weight:      selected?.id === zone.id ? 2.5 : (replayByZone[zone.id] ? 2.2 : 1.5),
-              dashArray: replayByZone[zone.id] ? "6 4" : undefined,
+        <div style={{
+          position: "absolute", inset: 0,
+          opacity: mapReady ? 1 : 0,
+          transition: "opacity 0.55s ease",
+        }}>
+          <DeckGL
+            layers={[polygonLayer]}
+            viewState={viewState}
+            controller={{
+              dragRotate: true,
+              touchRotate: true,
+              touchZoom: true,
+              keyboard: true,
+              doubleClickZoom: true,
             }}
-            eventHandlers={{ click: () => handleZoneClick(zone) }}
+            onViewStateChange={handleViewStateChange}
+            getTooltip={({ object }) => {
+              if (!object) return null;
+              const replayTag = replayByZone[object.id]
+                ? ` • ${replayByZone[object.id]} historical events`
+                : "";
+              return `${object.name} — ${RISK[object.risk_level]?.label || object.risk_level}${replayTag}`;
+            }}
           >
-            <Tooltip sticky>
-              <span style={{ fontSize: 11, fontFamily: "Inter" }}>
-                {zone.name} — {RISK[zone.risk_level]?.label || zone.risk_level?.toUpperCase()}
-                {replayByZone[zone.id] ? ` • ${replayByZone[zone.id]} historical events` : ""}
-              </span>
-            </Tooltip>
-          </Polygon>
-        ))}
+            <MapLibreMap
+              reuseMaps
+              mapLib={maplibregl}
+              mapStyle={mapStyle}
+              terrain={{ source: "terrainSource", exaggeration: 1.2 }}
+              dragRotate
+              pitchWithRotate
+              touchPitch
+              onIdle={() => setMapReady(true)}
+            />
+          </DeckGL>
+        </div>
 
-        <InlineMapControls drawerOpen={drawerOpen} />
-      </MapContainer>
+        {!MAPTILER_KEY && (
+          <div style={{
+            position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)",
+            zIndex: 5,
+            background: "rgba(255,84,81,0.18)",
+            border: "1px solid rgba(255,84,81,0.42)",
+            color: "#ffb3ad",
+            padding: "8px 12px",
+            borderRadius: 3,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}>
+            Missing VITE_MAPTILER_KEY
+          </div>
+        )}
+
+        {hoverInfo?.zone && (
+          <div style={{
+            position: "absolute",
+            left: hoverInfo.x + 10,
+            top: hoverInfo.y + 10,
+            zIndex: 4,
+            pointerEvents: "none",
+            background: "rgba(14,14,14,0.92)",
+            border: "1px solid rgba(91,64,62,0.2)",
+            color: "#e5e2e1",
+            fontSize: 11,
+            padding: "6px 8px",
+            borderRadius: 2,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+            fontFamily: "Inter",
+          }}>
+            {hoverInfo.zone.name} — {RISK[hoverInfo.zone.risk_level]?.label || hoverInfo.zone.risk_level}
+          </div>
+        )}
+
+        <InlineMapControls
+          drawerOpen={drawerOpen}
+          onZoomIn={() => setViewState((v) => ({ ...v, zoom: v.zoom + 0.7 }))}
+          onZoomOut={() => setViewState((v) => ({ ...v, zoom: v.zoom - 0.7 }))}
+          onReset={() => {
+            auto3DRef.current = false;
+            setViewState({
+              longitude: 75.7139,
+              latitude: 19.7515,
+              zoom: 7,
+              bearing: 0,
+              pitch: 0,
+              transitionDuration: 650,
+              transitionInterpolator: new FlyToInterpolator({ speed: 1.2 }),
+            });
+          }}
+        />
+      </div>
 
       {/* ── LEFT FILTER PANEL ── */}
       <div style={{
@@ -685,6 +866,10 @@ export default function MapViewPage() {
       </div>
 
       <style>{`
+        @keyframes mapSkeleton {
+          0% { background-position: 100% 0; }
+          100% { background-position: -100% 0; }
+        }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -697,30 +882,6 @@ export default function MapViewPage() {
           0%,100% { opacity: 1; }
           50%     { opacity: 0.35; }
         }
-        @keyframes zonePulseRed {
-          0%, 100% { fill-opacity: 0.4; }
-          50% { fill-opacity: 0.7; }
-        }
-        @keyframes zonePulseOrange {
-          0%, 100% { fill-opacity: 0.32; }
-          50% { fill-opacity: 0.52; }
-        }
-        .leaflet-interactive.zone-poly.zone-risk-red {
-          animation: zonePulseRed 3s ease-in-out infinite;
-        }
-        .leaflet-interactive.zone-poly.zone-risk-orange {
-          animation: zonePulseOrange 3.8s ease-in-out infinite;
-        }
-        .leaflet-container { background: #131313 !important; }
-        .leaflet-tooltip {
-          background: rgba(14,14,14,0.9) !important;
-          border: 1px solid rgba(91,64,62,0.2) !important;
-          color: #e5e2e1 !important;
-          font-family: Inter !important;
-          font-size: 11px !important;
-          border-radius: 2px !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
-        }
         select option { background: #1c1b1b; color: #e5e2e1; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #0e0e0e; }
@@ -730,9 +891,8 @@ export default function MapViewPage() {
   );
 }
 
-// ── Inline map controls (needs useMap hook inside MapContainer) ─
-function InlineMapControls({ drawerOpen }) {
-  const map = useMap();
+// ── Inline map controls ────────────────────────────────────────
+function InlineMapControls({ drawerOpen, onZoomIn, onZoomOut, onReset }) {
   return (
     <div style={{
       position: "absolute",
@@ -752,9 +912,9 @@ function InlineMapControls({ drawerOpen }) {
         overflow: "hidden",
       }}>
         {[
-          { icon: "add",         fn: () => map.zoomIn()  },
-          { icon: "remove",      fn: () => map.zoomOut() },
-          { icon: "my_location", fn: () => map.setView([19.7515, 75.7139], 7) },
+          { icon: "add",         fn: onZoomIn },
+          { icon: "remove",      fn: onZoomOut },
+          { icon: "my_location", fn: onReset },
         ].map(({ icon, fn }, i) => (
           <button key={icon} onClick={fn} style={{
             padding: "10px 12px", background: "transparent", border: "none",

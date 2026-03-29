@@ -10,6 +10,7 @@ const NAV = [
   { label: "Crack Reports", icon: "running_with_errors",  to: "/crack-reports" },
   { label: "Reports",       icon: "description",          to: "/reports" },
   { label: "Analytics",     icon: "analytics",            to: "/analytics" },
+  { label: "Predictions",   icon: "timeline",             to: "/predictions" },
   { label: "IoT Sensors",   icon: "sensors",              to: "/iot-sensors" },
   { label: "Upload",        icon: "upload_file",          to: "/upload" },
 ];

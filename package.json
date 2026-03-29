@@ -9,6 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@deck.gl/core": "^8.9.36",
+    "@deck.gl/geo-layers": "^8.9.36",
+    "@deck.gl/layers": "^8.9.36",
+    "@deck.gl/react": "^8.9.36",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.15.0",
@@ -16,10 +20,12 @@
     "axios": "^1.13.6",
     "framer-motion": "^11.18.2",
     "leaflet": "^1.9.4",
+    "maplibre-gl": "^5.21.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
     "react-loading-skeleton": "^3.5.0",
+    "react-map-gl": "^8.1.0",
     "react-router-dom": "^6.21.0",
     "recharts": "^2.15.4"
   },

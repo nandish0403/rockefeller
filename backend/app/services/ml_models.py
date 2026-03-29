@@ -46,7 +46,37 @@ def _dataset_base() -> Path:
 
 
 def _model3_dir() -> Path:
-    return _dataset_base() / "model3_district_models"
+    base = _dataset_base()
+    candidates = [
+        base / "model3_district_models",
+        base / "model 3 district models",
+        base / "model 3 distict models",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    # Keep backward-compatible default path so missing-folder errors remain clear.
+    return candidates[0]
+
+
+def available_district_models() -> list[str]:
+    model_dir = _model3_dir()
+    if not model_dir.exists():
+        return []
+
+    names: list[str] = []
+    for path in model_dir.glob("*.pkl"):
+        stem = path.stem.replace("_", " ").strip()
+        if stem:
+            names.append(stem)
+
+    return sorted(set(names))
+
+
+def district_model_count() -> int:
+    return len(available_district_models())
 
 
 def preload_models() -> None:

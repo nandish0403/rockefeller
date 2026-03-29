@@ -101,6 +101,11 @@ It is intentionally gitignored. Place it at either:
 - `backend/dataset/model1_best_phase2.keras`
 - `dataset/model1_best_phase2.keras`
 
+District rainfall forecast pickles (model3) are resolved from the first existing folder among:
+- `dataset/model3_district_models`
+- `dataset/model 3 district models`
+- `dataset/model 3 distict models`
+
 ---
 
 ## Prerequisites
@@ -164,15 +169,18 @@ Create root `.env` for deployed frontend API base URL:
 
 ```env
 VITE_API_URL=https://rockefeller-production.up.railway.app
+VITE_MAPTILER_KEY=your_maptiler_key
 ```
 
 Create root `.env.local` for local frontend development:
 
 ```env
 VITE_API_URL=http://localhost:8000
+VITE_MAPTILER_KEY=your_maptiler_key
 ```
 
 Frontend API calls read this through `src/config/api.js`.
+Map view satellite + 3D terrain tiles read `VITE_MAPTILER_KEY`.
 
 ---
 
@@ -192,6 +200,13 @@ Frontend API calls read this through `src/config/api.js`.
 | GET    | /api/zones/{id}/forecast | Tomorrow's predicted risk |
 | PATCH  | /api/zones/{id} | Update zone (officer / admin) |
 | GET    | /api/risk-levels | Fleet-wide risk level summary + per-zone breakdown |
+
+### Predictions
+| Method | Path | Description |
+|--------|------|-------------|
+| GET    | /api/predictions/summary | Fleet summary: risk distribution, average hazard score, model availability |
+| GET    | /api/predictions/zones | Zone-wise prediction rows with hazard score, rainfall 7-day forecast, blast anomaly, factor breakdown (optimized for dashboard loading) |
+| GET    | /api/predictions/zones/{zone_id} | Detailed prediction snapshot for one zone |
 
 ### Alerts
 | Method | Path | Description |
@@ -268,7 +283,7 @@ Frontend role behavior for alerts:
 - **Login fails** — confirm backend is running on port 8000 and `SECRET_KEY` matches.
 - **Map is empty** — run `seed_db.py` and verify MongoDB connection.
 - **No push notifications** — check browser permission and VAPID key configuration.
-- **Forecast errors** — verify `dataset/model 3 district models/` pickle files are present.
+- **Forecast errors** — verify your district model `.pkl` files exist in one of the supported model3 folders listed in Model Artifacts.
 
 ---
 

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     VAPID_PUBLIC_KEY: str = ""
     VAPID_PRIVATE_KEY: str = ""
     VAPID_CLAIMS_SUBJECT: str = "mailto:admin@rockefeller.local"
+    MODEL_ARTIFACTS_DIR: str = ""
+    CRACK_MODEL_PATH: str = ""
+    CRACK_MODEL_URL: str = ""
+    MODEL_CACHE_DIR: str = "runtime_models"
+    MODEL_DOWNLOAD_TIMEOUT_SEC: int = 30
 
     class Config:
         env_file = ".env"

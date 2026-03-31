@@ -12,8 +12,10 @@ import {
   Snackbar,
   Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useNotifications } from "../../context/NotificationContext";
+import { useThemeMode } from "../../context/ThemeModeContext";
 import { formatTimeAgo } from "../../utils/formatUtils";
 
 const LABELS = {
@@ -24,13 +26,14 @@ const LABELS = {
   "/reports":      ["Command Center", "Reports"],
   "/analytics":    ["Command Center", "Analytics"],
   "/iot-sensors":  ["Command Center", "IoT Sensors"],
-  "/upload":       ["Command Center", "Upload Report"],
   "/field-report": ["Command Center", "Field Report"],
   "/admin":        ["Command Center", "Admin Panel"],
   "/profile":      ["Command Center", "Profile"],
 };
 
 export default function Header() {
+  const theme = useTheme();
+  const { mode } = useThemeMode();
   const { pathname } = useLocation();
   const navigate     = useNavigate();
   const {
@@ -46,6 +49,7 @@ export default function Header() {
   } = useNotifications();
   const isMapRoute = pathname === "/map";
   const headerLeft = isMapRoute ? 96 : 256;
+  const isLight = mode === "light";
 
   const dynamicLabel = pathname.startsWith("/reports/")
     ? ["Command Center", "Report Details"]
@@ -76,9 +80,11 @@ export default function Header() {
       <Box sx={{
         position: "fixed", top: 0, left: `${headerLeft}px`, right: 0,
         height: 64, zIndex: 40,
-        bgcolor: "rgba(14,14,14,0.85)",
+        bgcolor: isLight ? "rgba(255,255,255,0.88)" : "rgba(14,14,14,0.85)",
         backdropFilter: "blur(12px)",
-        borderBottom: "1px solid rgba(91,64,62,0.15)",
+        borderBottom: isLight
+          ? "1px solid rgba(171,179,183,0.42)"
+          : "1px solid rgba(91,64,62,0.15)",
         display: "flex", justifyContent: "space-between",
         alignItems: "center", px: 4,
         animation: "shellSlideDown 0.45s ease both",
@@ -86,11 +92,11 @@ export default function Header() {
       }}>
         {/* Breadcrumb */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, animation: "fadeInSoft 0.5s ease 0.08s both" }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#E4BEBA" }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 600, color: theme.palette.text.secondary }}>
             {parent}
           </Typography>
-          <Typography sx={{ color: "rgba(228,190,186,0.3)" }}>/</Typography>
-          <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#FFB3AD" }}>
+          <Typography sx={{ color: isLight ? "rgba(88,96,100,0.35)" : "rgba(228,190,186,0.3)" }}>/</Typography>
+          <Typography sx={{ fontSize: 14, fontWeight: 700, color: theme.palette.primary.main }}>
             {current}
           </Typography>
         </Box>
@@ -98,7 +104,7 @@ export default function Header() {
         {/* Right */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, animation: "fadeInSoft 0.5s ease 0.14s both" }}>
           <IconButton onClick={openDrawer}
-            sx={{ color: "#E4BEBA", "&:hover": { color: "#FFB3AD" } }}>
+            sx={{ color: theme.palette.text.secondary, "&:hover": { color: theme.palette.primary.main } }}>
             <Badge color="error" badgeContent={unreadCount > 0 ? unreadCount : null}>
               <span className="material-symbols-outlined">notifications</span>
             </Badge>
@@ -106,14 +112,16 @@ export default function Header() {
 
           <Box onClick={() => navigate("/profile")} sx={{
             width: 32, height: 32, borderRadius: "50%",
-            bgcolor: "#3A3939", cursor: "pointer",
+            bgcolor: isLight ? "#e3e9ec" : "#3A3939", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            border: "1px solid rgba(91,64,62,0.2)",
-            "&:hover": { borderColor: "#FFB3AD" },
+            border: isLight
+              ? "1px solid rgba(171,179,183,0.45)"
+              : "1px solid rgba(91,64,62,0.2)",
+            "&:hover": { borderColor: theme.palette.primary.main },
             transition: "all 0.2s",
           }}>
             <span className="material-symbols-outlined"
-              style={{ color: "#E4BEBA", fontSize: 18 }}>person</span>
+              style={{ color: isLight ? "#2b3437" : "#E4BEBA", fontSize: 18 }}>person</span>
           </Box>
         </Box>
       </Box>
@@ -125,18 +133,18 @@ export default function Header() {
         PaperProps={{
           sx: {
             width: 380,
-            bgcolor: "#161616",
-            borderLeft: "1px solid rgba(91,64,62,0.18)",
+            bgcolor: theme.palette.background.paper,
+            borderLeft: `1px solid ${theme.palette.divider}`,
           },
         }}
       >
-        <Box sx={{ px: 2.2, py: 1.8, borderBottom: "1px solid rgba(91,64,62,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#E5E2E1" }}>Notifications</Typography>
+        <Box sx={{ px: 2.2, py: 1.8, borderBottom: `1px solid ${theme.palette.divider}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Typography sx={{ fontSize: 15, fontWeight: 700, color: theme.palette.text.primary }}>Notifications</Typography>
           <Button
             onClick={markAllRead}
             size="small"
             sx={{
-              color: "#FFB3AD",
+              color: theme.palette.primary.main,
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: "0.08em",
@@ -149,7 +157,7 @@ export default function Header() {
 
         <List sx={{ px: 0.5, py: 1, overflowY: "auto", flex: 1 }}>
           {notifications.length === 0 && (
-            <Typography sx={{ px: 2, py: 3, color: "#9f9a99", fontSize: 12 }}>
+            <Typography sx={{ px: 2, py: 3, color: theme.palette.text.secondary, fontSize: 12 }}>
               No notifications yet.
             </Typography>
           )}
@@ -164,7 +172,9 @@ export default function Header() {
                   mx: 0.8,
                   borderRadius: "4px",
                   borderLeft: row.is_read ? "2px solid transparent" : `2px solid ${tone.color}`,
-                  bgcolor: row.is_read ? "rgba(28,27,27,0.45)" : "rgba(38,36,36,0.78)",
+                  bgcolor: row.is_read
+                    ? (isLight ? "rgba(234,239,241,0.65)" : "rgba(28,27,27,0.45)")
+                    : (isLight ? "rgba(229,226,227,0.6)" : "rgba(38,36,36,0.78)"),
                   alignItems: "flex-start",
                 }}
               >
@@ -175,16 +185,16 @@ export default function Header() {
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <Typography sx={{ color: "#E5E2E1", fontSize: 12.5, fontWeight: 700 }}>
+                    <Typography sx={{ color: theme.palette.text.primary, fontSize: 12.5, fontWeight: 700 }}>
                       {row.title}
                     </Typography>
                   }
                   secondary={
                     <>
-                      <Typography sx={{ color: "#bcb7b6", fontSize: 11.5, mt: 0.3 }}>
+                      <Typography sx={{ color: theme.palette.text.secondary, fontSize: 11.5, mt: 0.3 }}>
                         {row.message}
                       </Typography>
-                      <Typography sx={{ color: "#9f9a99", fontSize: 10, mt: 0.5 }}>
+                      <Typography sx={{ color: theme.palette.text.secondary, opacity: 0.85, fontSize: 10, mt: 0.5 }}>
                         {formatTimeAgo(row.created_at)}
                       </Typography>
                     </>
@@ -206,7 +216,10 @@ export default function Header() {
           severity="info"
           variant="filled"
           onClose={() => setSnackbar(null)}
-          sx={{ bgcolor: "#2a2a2a", color: "#e5e2e1" }}
+          sx={{
+            bgcolor: isLight ? "#e3e9ec" : "#2a2a2a",
+            color: isLight ? "#2b3437" : "#e5e2e1",
+          }}
         >
           <strong>{snackbar?.title}</strong>
           {snackbar?.message ? ` - ${snackbar.message}` : ""}

@@ -1,3 +1,5 @@
 .env
 __pycache__/
 uploads/
+../dataset/model1_best_phase2.keras
+dataset/model1_best_phase2.keras

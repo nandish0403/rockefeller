@@ -17,7 +17,6 @@ import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
 import FieldReportPage from "../pages/FieldReport";
 import IoTSensorsPage from "../pages/IoTSensors";
-import Upload from "../pages/Upload";
 import BlastsPage from "../pages/Blasts";
 import ExplorationsPage from "../pages/Explorations";
 
@@ -47,7 +46,6 @@ const router = createBrowserRouter([
       { path: "analytics",        element: <Analytics /> },
       { path: "predictions",      element: <Predictions /> },
       { path: "iot-sensors",      element: <IoTSensorsPage /> },
-      { path: "upload",           element: <Upload /> },
       { path: "blasts",           element: <BlastsPage /> },
       { path: "explorations",     element: <ExplorationsPage /> },
       { path: "profile",          element: <Profile /> },

@@ -38,6 +38,10 @@ Thumbs.db
 # Local frontend overrides
 .env.local
 
+# Crack AI model artifact (large binary)
+dataset/model1_best_phase2.keras
+backend/dataset/model1_best_phase2.keras
+
 # One-time data migration script (intentionally disabled)
 backend/scripts/sync_frontend_data.py
 

@@ -11,7 +11,6 @@ const NAV = [
   { label: "Reports",       icon: "description",         to: "/reports" },
   { label: "Analytics",     icon: "analytics",           to: "/analytics" },
   { label: "IoT Sensors",   icon: "sensors",             to: "/iot-sensors" },
-  { label: "Upload",        icon: "upload_file",         to: "/upload" },
 ];
 
 export default function Sidebar() {
@@ -26,6 +25,7 @@ export default function Sidebar() {
       borderRight: `1px solid rgba(91,64,62,0.15)`,
       display: "flex", flexDirection: "column",
       py: 3, zIndex: 50,
+      overflow: "hidden",
     }}>
       {/* Logo */}
       <Box sx={{ px: 3, mb: 5 }}>
@@ -40,7 +40,19 @@ export default function Sidebar() {
       </Box>
 
       {/* Nav Links */}
-      <Box component="nav" sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
+      <Box component="nav" sx={{
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 0.5,
+        overflowY: "auto",
+        overflowX: "hidden",
+        pb: 1,
+        "&::-webkit-scrollbar": { width: 4 },
+        "&::-webkit-scrollbar-track": { background: "transparent" },
+        "&::-webkit-scrollbar-thumb": { background: "rgba(58,57,57,0.9)", borderRadius: 10 },
+      }}>
         {NAV.map(({ label, icon, to }) => (
           <NavLink key={to} to={to} style={{ textDecoration: "none" }}>
             {({ isActive }) => (
@@ -68,7 +80,7 @@ export default function Sidebar() {
       </Box>
 
       {/* User Card */}
-      <Box sx={{ px: 3 }}>
+      <Box sx={{ px: 3, flexShrink: 0 }}>
         <Box sx={{
           display: "flex", alignItems: "center", gap: 1.5,
           p: 1.5, borderRadius: 1, bgcolor: T.surfaceLow, cursor: "pointer",

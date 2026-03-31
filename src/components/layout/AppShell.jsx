@@ -11,7 +11,7 @@ export default function AppShell() {
   const sidebarWidth = isMapRoute ? 96 : 256;
 
   return (
-    <Box sx={{ display: "flex", bgcolor: "#131313", minHeight: "100vh", "--sidebar-w": `${sidebarWidth}px` }}>
+    <Box sx={{ display: "flex", bgcolor: (theme) => theme.palette.background.default, minHeight: "100vh", "--sidebar-w": `${sidebarWidth}px` }}>
       <SidebarNav />
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <Header />

@@ -1,6 +1,8 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Box, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useAuth } from "../../context/AuthContext";
+import { useThemeMode } from "../../context/ThemeModeContext";
 import { T } from "../../theme/tokens";
 
 const NAV = [
@@ -12,16 +14,18 @@ const NAV = [
   { label: "Analytics",     icon: "analytics",            to: "/analytics" },
   { label: "Predictions",   icon: "timeline",             to: "/predictions" },
   { label: "IoT Sensors",   icon: "sensors",              to: "/iot-sensors" },
-  { label: "Upload",        icon: "upload_file",          to: "/upload" },
   { label: "Blasts",        icon: "explosion",            to: "/blasts" },
   { label: "Explorations",  icon: "biotech",              to: "/explorations" },
 ];
 
 export default function SidebarNav() {
   const { currentUser, logout } = useAuth();
+  const theme = useTheme();
+  const { mode } = useThemeMode();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isMapRoute = pathname === "/map";
+  const isLight = mode === "light";
 
   const handleLogout = () => {
     logout();
@@ -32,10 +36,13 @@ export default function SidebarNav() {
     <Box sx={{
       position: "fixed", left: 0, top: 0,
       width: isMapRoute ? 96 : 256, height: "100vh",
-      bgcolor: "#0E0E0E",
-      borderRight: "1px solid rgba(91,64,62,0.15)",
+      bgcolor: isLight ? "#f1f4f6" : "#0E0E0E",
+      borderRight: isLight
+        ? "1px solid rgba(171,179,183,0.45)"
+        : "1px solid rgba(91,64,62,0.15)",
       display: "flex", flexDirection: "column",
       py: 3, zIndex: 50,
+      overflow: "hidden",
       animation: "shellSlideInLeft 0.45s ease both",
       transition: "width 0.28s ease",
     }}>
@@ -43,7 +50,7 @@ export default function SidebarNav() {
       <Box onClick={() => navigate("/dashboard")} sx={{ px: 3, mb: 5, cursor: "pointer" }}>
         <Typography sx={{
           fontSize: isMapRoute ? 17 : 20, fontWeight: 700,
-          letterSpacing: "-0.05em", color: "#E5E2E1",
+          letterSpacing: "-0.05em", color: isLight ? "#2b3437" : "#E5E2E1",
           fontFamily: "Inter",
           animation: "floatIcon 3s ease-in-out infinite",
         }}>
@@ -52,7 +59,7 @@ export default function SidebarNav() {
         {!isMapRoute && (
           <Typography sx={{
             fontSize: "0.6875rem", fontWeight: 300,
-            letterSpacing: "0.1em", color: "#E4BEBA",
+            letterSpacing: "0.1em", color: isLight ? "#586064" : "#E4BEBA",
             fontFamily: "Inter",
           }}>
             Maharashtra, India
@@ -61,7 +68,19 @@ export default function SidebarNav() {
       </Box>
 
       {/* Nav */}
-      <Box component="nav" sx={{ flex: 1 }}>
+      <Box component="nav" sx={{
+        flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        overflowX: "hidden",
+        pb: 1,
+        "&::-webkit-scrollbar": { width: 4 },
+        "&::-webkit-scrollbar-track": { background: "transparent" },
+        "&::-webkit-scrollbar-thumb": {
+          background: isLight ? "rgba(171,179,183,0.75)" : "rgba(58,57,57,0.9)",
+          borderRadius: 10,
+        },
+      }}>
         {NAV.map(({ label, icon, to }, idx) => (
           <NavLink key={to} to={to} style={{ textDecoration: "none" }}>
             {({ isActive }) => (
@@ -69,9 +88,9 @@ export default function SidebarNav() {
                 display: "flex", alignItems: "center", gap: 2,
                 px: isMapRoute ? 2.25 : 3, py: 1.5,
                 borderLeft: isActive
-                  ? "2px solid #FFB3AD"
+                  ? `2px solid ${theme.palette.primary.main}`
                   : "2px solid transparent",
-                color:   isActive ? "#FFB3AD" : "#E4BEBA",
+                color:   isActive ? theme.palette.primary.main : theme.palette.text.secondary,
                 opacity: isActive ? 1 : 0.7,
                 fontSize: "0.6875rem", fontWeight: 300,
                 letterSpacing: "0.1em", fontFamily: "Inter",
@@ -79,8 +98,8 @@ export default function SidebarNav() {
                 transition: "all 0.2s",
                 animation: `fadeUpSoft 0.4s ease ${0.07 + idx * 0.035}s both`,
                 "&:hover": {
-                  bgcolor: "#201F1F",
-                  color: "#FFB3AD",
+                  bgcolor: isLight ? "#ffffff" : "#201F1F",
+                  color: theme.palette.primary.main,
                   opacity: 1,
                   "& .material-symbols-outlined": {
                     transform: "scale(1.15)",
@@ -95,7 +114,9 @@ export default function SidebarNav() {
                     transform: "scale(1)",
                     transition: "transform 150ms ease, filter 150ms ease",
                     filter: isActive
-                      ? "drop-shadow(0 0 8px rgba(255,179,173,0.35))"
+                      ? (isLight
+                        ? "drop-shadow(0 0 8px rgba(95,94,95,0.2))"
+                        : "drop-shadow(0 0 8px rgba(255,179,173,0.35))")
                       : "none",
                   }}>
                   {icon}
@@ -114,17 +135,17 @@ export default function SidebarNav() {
                 display: "flex", alignItems: "center", gap: 2,
                 px: isMapRoute ? 2.25 : 3, py: 1.5,
                 borderLeft: isActive
-                  ? "2px solid #FFB3AD"
+                  ? `2px solid ${theme.palette.primary.main}`
                   : "2px solid transparent",
-                color:   isActive ? "#FFB3AD" : "#E4BEBA",
+                color:   isActive ? theme.palette.primary.main : theme.palette.text.secondary,
                 opacity: isActive ? 1 : 0.7,
                 fontSize: "0.6875rem", fontWeight: 300,
                 letterSpacing: "0.1em", fontFamily: "Inter",
                 cursor: "pointer",
                 transition: "all 0.2s",
                 "&:hover": {
-                  bgcolor: "#201F1F",
-                  color: "#FFB3AD",
+                  bgcolor: isLight ? "#ffffff" : "#201F1F",
+                  color: theme.palette.primary.main,
                   opacity: 1,
                   "& .material-symbols-outlined": {
                     transform: "scale(1.15)",
@@ -151,31 +172,31 @@ export default function SidebarNav() {
       </Box>
 
       {/* User card */}
-      <Box sx={{ px: 3 }}>
+      <Box sx={{ px: 3, flexShrink: 0 }}>
         <Box onClick={() => navigate("/profile")} sx={{
           display: "flex", alignItems: "center", gap: 1.5,
           p: 1.5, borderRadius: "4px",
-          bgcolor: "#1C1B1B", cursor: "pointer",
-          "&:hover": { bgcolor: "#2A2A2A" },
+          bgcolor: isLight ? "#ffffff" : "#1C1B1B", cursor: "pointer",
+          "&:hover": { bgcolor: isLight ? "#eaeff1" : "#2A2A2A" },
           transition: "all 0.2s",
           animation: "fadeInSoft 0.45s ease 0.3s both",
         }}>
           <Box sx={{
             width: 32, height: 32, borderRadius: "50%",
-            bgcolor: "rgba(255,179,173,0.15)",
+            bgcolor: isLight ? "rgba(95,94,95,0.14)" : "rgba(255,179,173,0.15)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <span className="material-symbols-outlined"
-              style={{ color: "#FFB3AD", fontSize: 18 }}>
+              style={{ color: theme.palette.primary.main, fontSize: 18 }}>
               account_circle
             </span>
           </Box>
           {!isMapRoute && (
             <Box>
-            <Typography sx={{ fontSize: 10, fontWeight: 700, color: "#E5E2E1" }}>
+            <Typography sx={{ fontSize: 10, fontWeight: 700, color: theme.palette.text.primary }}>
               {currentUser?.name || "Guest"}
             </Typography>
-            <Typography sx={{ fontSize: 9, color: "#E4BEBA", textTransform: "capitalize" }}>
+            <Typography sx={{ fontSize: 9, color: theme.palette.text.secondary, textTransform: "capitalize" }}>
               {currentUser?.role || "—"}
             </Typography>
             </Box>
@@ -188,8 +209,10 @@ export default function SidebarNav() {
             mt: 1,
             p: 1.3,
             borderRadius: "4px",
-            border: "1px solid rgba(255,179,173,0.22)",
-            color: "#E4BEBA",
+            border: isLight
+              ? "1px solid rgba(171,179,183,0.55)"
+              : "1px solid rgba(255,179,173,0.22)",
+            color: theme.palette.text.secondary,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -201,9 +224,9 @@ export default function SidebarNav() {
             cursor: "pointer",
             transition: "all 0.2s",
             "&:hover": {
-              color: "#FFB3AD",
-              borderColor: "#FFB3AD",
-              background: "rgba(255,179,173,0.08)",
+              color: theme.palette.primary.main,
+              borderColor: theme.palette.primary.main,
+              background: isLight ? "rgba(95,94,95,0.07)" : "rgba(255,179,173,0.08)",
             },
           }}
         >

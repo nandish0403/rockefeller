@@ -16,6 +16,27 @@ The system is designed for daily command center use across three operational rol
 ### 3D Mine Visualisation
 Interactive mine map showing safe and dangerous zones coloured by risk level (green / yellow / orange / red).
 
+### UI Styling
+The interface uses Inter typography with a dark-first monitoring visual style.
+
+Dashboard layout note:
+- The Dashboard page follows the provided Rockefeller Sentinel HTML layout closely (same box structure and section ordering).
+- Sidebar navigation structure is unchanged.
+- Sidebar navigation is now independently scrollable so Profile and Logout remain accessible when many menu items are present.
+- The existing interactive mine map implementation is preserved and reused inside the redesigned map panel.
+- The in-page dashboard title strip was removed to keep the content canvas clean.
+- Risk Distribution, 7-Day Risk Trend, and Rainfall Snapshot cards are forced to equal heights for consistent rectangles.
+- Subtle staggered entrance animations were added to improve visual polish without changing functionality.
+
+Operations pages layout note:
+- Blasts was redesigned to a split command layout (left: new blast entry, right: recent blast telemetry table) inspired by the provided HTML while preserving create/list API behavior.
+- Explorations was redesigned to a split geology-log layout (left: exploration form with water controls, right: recent logs and saturation analysis) while preserving create/list API behavior.
+- Admin was redesigned as a control-center layout with KPI tiles, users management grid, quick actions, security heatmap, 7-day alert volumes, and a recent activity log.
+- Motion polish was added across these pages using subtle fade/rise/pulse animations without changing operational workflows.
+- Admin visual colors are aligned with the same warm dark palette used across Dashboard, Blasts, and Explorations (no standalone blue/cyan theme).
+- The `/admin` route uses the existing shared app shell again (original sidebar and header preserved).
+- Admin page content keeps the control-center sections, and page actions/buttons are wired to clickable interactions.
+
 ### Risk Prediction
 Predicts landslide probability using a weighted-sum formula and an ML model (XGBoost) trained on terrain, rainfall, soil type, blast activity, and historical events.
 
@@ -30,6 +51,7 @@ Risk = 0.40 × rainfall  +  0.20 × slope  +  0.15 × soil_factor
 
 ### Worker Reporting
 Workers can upload photos of cracks, water seepage, or unstable rock formations.
+Reporting is handled through Crack Reports and Field Report workflows; the dedicated `/upload` page is no longer used.
 
 ### Real-Time Alerts
 Alerts users about high-risk zones, heavy rainfall, and blast anomalies via in-app WebSocket and browser push notifications.
@@ -105,6 +127,25 @@ It is intentionally gitignored. Place it at either:
 - `backend/dataset/model1_best_phase2.keras`
 - `dataset/model1_best_phase2.keras`
 
+You can also keep model files completely outside the repository by setting environment variables:
+- `MODEL_ARTIFACTS_DIR` : directory containing `model1_best_phase2.keras`, `model2_model.pkl`, `model2_scaler.pkl`, `model2_encoder.pkl`, and `model4_blast_anomaly.pkl`
+- `CRACK_MODEL_PATH` : optional full file path override for crack model only
+- `CRACK_MODEL_URL` : optional URL for auto-download fallback in deployment
+- `MODEL_CACHE_DIR` : local cache directory used when downloading from `CRACK_MODEL_URL`
+- `MODEL_DOWNLOAD_TIMEOUT_SEC` : download timeout in seconds
+
+Resolution order for crack model loading:
+1. `CRACK_MODEL_PATH` (if set)
+2. `<MODEL_ARTIFACTS_DIR>/model1_best_phase2.keras` (if `MODEL_ARTIFACTS_DIR` set)
+3. `backend/dataset/model1_best_phase2.keras`
+4. `dataset/model1_best_phase2.keras`
+5. Download from `CRACK_MODEL_URL` into `MODEL_CACHE_DIR`
+
+Git safety:
+- Only the crack classifier artifact (`model1_best_phase2.keras`) is ignored by default because of its large size.
+- If any model files were already tracked previously, remove them from git index once with:
+     `git rm --cached <path-to-model-file>`
+
 District rainfall forecast pickles (model3) are resolved from the first existing folder among:
 - `dataset/model3_district_models`
 - `dataset/model 3 district models`
@@ -167,6 +208,11 @@ GEMINI_MODEL=gemini-3.1-pro-preview
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_CLAIMS_SUBJECT=mailto:admin@rockefeller.local
+MODEL_ARTIFACTS_DIR=
+CRACK_MODEL_PATH=
+CRACK_MODEL_URL=
+MODEL_CACHE_DIR=runtime_models
+MODEL_DOWNLOAD_TIMEOUT_SEC=30
 ```
 
 Create root `.env` for deployed frontend API base URL:

@@ -6,6 +6,7 @@ from typing import Any
 from datetime import datetime, timedelta
 
 import numpy as np
+from app.core.config import settings
 from app.models.blast_event import BlastEvent
 
 FEATURES = [
@@ -30,8 +31,35 @@ _MODEL4_CRITICAL_THRESHOLD = -0.15
 _models: dict[str, Any] = {}
 
 
+def _backend_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _resolve_config_path(raw_path: str) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path
+
+    backend_root = _backend_root()
+    backend_candidate = backend_root / path
+    workspace_candidate = backend_root.parent / path
+
+    if backend_candidate.exists():
+        return backend_candidate
+    if workspace_candidate.exists():
+        return workspace_candidate
+    return backend_candidate
+
+
 def _dataset_base() -> Path:
-    backend_root = Path(__file__).resolve().parents[2]
+    configured = str(settings.MODEL_ARTIFACTS_DIR or "").strip()
+    if configured:
+        configured_path = _resolve_config_path(configured)
+        if configured_path.exists():
+            return configured_path
+        return configured_path
+
+    backend_root = _backend_root()
     workspace_root = backend_root.parent
 
     candidates = [

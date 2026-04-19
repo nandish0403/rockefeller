@@ -79,6 +79,8 @@ class _EmergencyBroadcastListenerState
   }
 
   void _showNotificationBanner(Map<String, dynamic> data) {
+    final title = data['title']?.toString() ?? 'New notification';
+    final message = data['message']?.toString();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppTheme.surfaceContainerHigh,
@@ -88,7 +90,7 @@ class _EmergencyBroadcastListenerState
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                data['title']?.toString() ?? 'New notification',
+                message == null || message.isEmpty ? title : '$title: $message',
                 style: const TextStyle(color: AppTheme.onSurface, fontSize: 13),
               ),
             ),
@@ -176,19 +178,22 @@ class _SentinelBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 72,
-      color: AppTheme.background,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavItem(icon: Icons.dashboard, label: 'Dashboard', path: '/', currentLocation: currentLocation),
-          _NavItem(icon: Icons.map, label: 'Map', path: '/map', currentLocation: currentLocation),
-          _NavItem(icon: Icons.warning_rounded, label: 'Alerts', path: '/alerts',
-              currentLocation: currentLocation, badgeCount: unreadCount > 0 ? unreadCount : null),
-          _NavItem(icon: Icons.description, label: 'Reports', path: '/reports', currentLocation: currentLocation),
-          _NavItem(icon: Icons.person, label: 'Profile', path: '/profile', currentLocation: currentLocation),
-        ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 76,
+        color: AppTheme.background,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _NavItem(icon: Icons.dashboard, label: 'Dashboard', path: '/', currentLocation: currentLocation),
+            _NavItem(icon: Icons.map, label: 'Map', path: '/map', currentLocation: currentLocation),
+            _NavItem(icon: Icons.warning_rounded, label: 'Alerts', path: '/alerts',
+                currentLocation: currentLocation, badgeCount: unreadCount > 0 ? unreadCount : null),
+            _NavItem(icon: Icons.description, label: 'Reports', path: '/reports', currentLocation: currentLocation),
+            _NavItem(icon: Icons.person, label: 'Profile', path: '/profile', currentLocation: currentLocation),
+          ],
+        ),
       ),
     );
   }
@@ -217,36 +222,41 @@ class _NavItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.go(path),
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        height: 72,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(icon, color: color, size: 24),
-                if (badgeCount != null && badgeCount! > 0)
-                  Positioned(
-                    right: -4, top: -4,
-                    child: Container(
-                      width: 8, height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.primary,
-                        shape: BoxShape.circle,
-                      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(icon, color: color, size: 22),
+              if (badgeCount != null && badgeCount! > 0)
+                Positioned(
+                  right: -4, top: -4,
+                  child: Container(
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
                     ),
                   ),
-              ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'SpaceGrotesk',
+              fontSize: 8,
+              fontWeight: _isActive ? FontWeight.w700 : FontWeight.w300,
+              letterSpacing: 0.8,
+              color: color,
             ),
-            const SizedBox(height: 4),
-            Text(label.toUpperCase(),
-              style: TextStyle(
-                fontFamily: 'SpaceGrotesk',
-                fontSize: 9, fontWeight: _isActive ? FontWeight.w700 : FontWeight.w300,
-                letterSpacing: 0.8, color: color)),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -32,7 +32,12 @@ class WsEvent {
       'emergencybroadcast' => WsEventType.emergencyBroadcast,
       _ => WsEventType.unknown,
     };
-    return WsEvent(type: type, data: json);
+
+    // Backend may wrap payload inside keys like `notification` or `data`.
+    final wrapped = json['notification'] ?? json['data'];
+    final payload = wrapped is Map<String, dynamic> ? wrapped : json;
+
+    return WsEvent(type: type, data: payload);
   }
 }
 

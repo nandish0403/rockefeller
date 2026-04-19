@@ -60,8 +60,17 @@ extension RiskLevelX on RiskLevel {
 }
 
 RiskLevel riskFromString(String? s) => switch (s?.toLowerCase()) {
+  'critical' => RiskLevel.high,
+  'emergency' => RiskLevel.high,
+  'red' => RiskLevel.high,
+  'orange' => RiskLevel.high,
   'high'    => RiskLevel.high,
+  'warning' => RiskLevel.medium,
+  'amber' => RiskLevel.medium,
+  'yellow' => RiskLevel.medium,
   'medium'  => RiskLevel.medium,
+  'info' => RiskLevel.low,
+  'green' => RiskLevel.low,
   'low'     => RiskLevel.low,
   'nominal' => RiskLevel.nominal,
   _         => RiskLevel.unknown,
@@ -103,11 +112,46 @@ List<double>? _extractLngLatPair(dynamic value) {
   return null;
 }
 
+List<double>? _extractLatLngPair(dynamic value) {
+  if (value is List) {
+    if (value.length >= 2) {
+      final lat = _numToDouble(value[0]);
+      final lng = _numToDouble(value[1]);
+      if (lat != null && lng != null) return [lat, lng];
+    }
+    for (final item in value) {
+      final pair = _extractLatLngPair(item);
+      if (pair != null) return pair;
+    }
+    return null;
+  }
+
+  if (value is Map<String, dynamic>) {
+    final lat = _numToDouble(value['latitude'] ?? value['lat'] ?? value['y']);
+    final lng = _numToDouble(
+      value['longitude'] ?? value['lng'] ?? value['lon'] ?? value['long'] ?? value['x'],
+    );
+    if (lat != null && lng != null) return [lat, lng];
+
+    for (final nested in value.values) {
+      final pair = _extractLatLngPair(nested);
+      if (pair != null) return pair;
+    }
+  }
+
+  return null;
+}
+
 double? _extractLatitude(Map<String, dynamic> json) {
   final direct = _numToDouble(
     json['latitude'] ?? json['lat'] ?? json['center_lat'] ?? json['center_latitude'],
   );
   if (direct != null) return direct;
+
+  final pairFromLatLngs = _extractLatLngPair(
+    json['latlngs'] ?? json['lat_lngs'] ?? json['latlng'] ?? json['points'],
+  );
+  if (pairFromLatLngs != null) return pairFromLatLngs[0];
 
   final pairFromCoordinates = _extractLngLatPair(json['coordinates']);
   if (pairFromCoordinates != null) return pairFromCoordinates[1];
@@ -135,6 +179,11 @@ double? _extractLongitude(Map<String, dynamic> json) {
         json['center_longitude'],
   );
   if (direct != null) return direct;
+
+  final pairFromLatLngs = _extractLatLngPair(
+    json['latlngs'] ?? json['lat_lngs'] ?? json['latlng'] ?? json['points'],
+  );
+  if (pairFromLatLngs != null) return pairFromLatLngs[1];
 
   final pairFromCoordinates = _extractLngLatPair(json['coordinates']);
   if (pairFromCoordinates != null) return pairFromCoordinates[0];
@@ -194,7 +243,10 @@ enum AlertStatus { active, acknowledged, resolved }
 enum AlertSeverity { critical, warning, info }
 
 AlertSeverity alertSeverityFromString(String? s) => switch (s?.toLowerCase()) {
+  'emergency' => AlertSeverity.critical,
+  'high'     => AlertSeverity.critical,
   'critical' => AlertSeverity.critical,
+  'medium'   => AlertSeverity.warning,
   'warning'  => AlertSeverity.warning,
   _          => AlertSeverity.info,
 };
@@ -202,8 +254,47 @@ AlertSeverity alertSeverityFromString(String? s) => switch (s?.toLowerCase()) {
 AlertStatus alertStatusFromString(String? s) => switch (s?.toLowerCase()) {
   'acknowledged' => AlertStatus.acknowledged,
   'resolved'     => AlertStatus.resolved,
+  'closed'       => AlertStatus.resolved,
   _              => AlertStatus.active,
 };
+
+String? _nonEmptyString(dynamic value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
+}
+
+String? _firstNonEmptyString(List<dynamic> values) {
+  for (final value in values) {
+    final text = _nonEmptyString(value);
+    if (text != null) return text;
+  }
+  return null;
+}
+
+String? _stringFromObject(dynamic value) {
+  if (value is Map<String, dynamic>) {
+    return _firstNonEmptyString([
+      value['name'],
+      value['username'],
+      value['title'],
+      value['email'],
+      value['id'],
+      value['_id'],
+    ]);
+  }
+  return _nonEmptyString(value);
+}
+
+String? _formatRiskProbability(dynamic value) {
+  if (value == null) return null;
+  if (value is num) {
+    final n = value.toDouble();
+    if (n <= 1) return '${(n * 100).toStringAsFixed(0)}%';
+    return '${n.toStringAsFixed(0)}%';
+  }
+  return _nonEmptyString(value);
+}
 
 class AlertModel {
   final String id;
@@ -215,6 +306,13 @@ class AlertModel {
   final String? zoneName;
   final String? location;
   final DateTime? createdAt;
+  final String? district;
+  final String? sourceSensor;
+  final String? riskProbability;
+  final String? assignedTo;
+  final String? recommendedAction;
+  final String? severityLabel;
+  final RiskLevel zoneRiskLevel;
 
   const AlertModel({
     required this.id,
@@ -226,21 +324,104 @@ class AlertModel {
     this.zoneName,
     this.location,
     this.createdAt,
+    this.district,
+    this.sourceSensor,
+    this.riskProbability,
+    this.assignedTo,
+    this.recommendedAction,
+    this.severityLabel,
+    this.zoneRiskLevel = RiskLevel.unknown,
   });
 
-  factory AlertModel.fromJson(Map<String, dynamic> json) => AlertModel(
-    id:          json['id']?.toString()    ?? json['_id']?.toString() ?? '',
-    title:       json['title']?.toString() ?? json['type']?.toString() ?? 'Alert',
-    description: json['description']?.toString() ?? json['message']?.toString() ?? '',
-    severity:    alertSeverityFromString(json['severity']?.toString()),
-    status:      alertStatusFromString(json['status']?.toString()),
-    zoneId:      json['zone_id']?.toString(),
-    zoneName:    json['zone_name']?.toString(),
-    location:    json['location']?.toString(),
-    createdAt:   json['created_at'] != null
-        ? DateTime.tryParse(json['created_at'].toString())
-        : null,
-  );
+  factory AlertModel.fromJson(Map<String, dynamic> json) {
+    final zone = json['zone'];
+    final rawSeverity = _firstNonEmptyString([
+      json['severity'],
+      json['alert_level'],
+      json['level'],
+      json['risk_level'],
+      json['priority'],
+    ]);
+    final zoneName = _firstNonEmptyString([
+      json['zone_name'],
+      json['zone_label'],
+      zone is Map<String, dynamic> ? zone['name'] : null,
+    ]);
+    final fallbackTitle = _firstNonEmptyString([
+      json['title'],
+      json['trigger_title'],
+      json['type'],
+      zoneName,
+      'Alert',
+    ]);
+
+    return AlertModel(
+      id:          json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      title:       fallbackTitle ?? 'Alert',
+      description: _firstNonEmptyString([
+            json['description'],
+            json['trigger_reason'],
+            json['reason'],
+            json['message'],
+          ]) ??
+          '',
+      severity:    alertSeverityFromString(rawSeverity),
+      status:      alertStatusFromString(json['status']?.toString()),
+      zoneId:      _firstNonEmptyString([
+        json['zone_id'],
+        zone is Map<String, dynamic> ? zone['id'] : null,
+        zone is Map<String, dynamic> ? zone['_id'] : null,
+      ]),
+      zoneName:    zoneName,
+      location:    _firstNonEmptyString([
+        json['location'],
+        json['site'],
+      ]),
+      createdAt:   DateTime.tryParse(
+        _firstNonEmptyString([
+              json['created_at'],
+              json['timestamp'],
+              json['time'],
+            ]) ??
+            '',
+      ),
+      district: _firstNonEmptyString([
+        json['district'],
+        json['region'],
+        zone is Map<String, dynamic> ? zone['district'] : null,
+      ]),
+      sourceSensor: _firstNonEmptyString([
+        json['source_sensor'],
+        json['source'],
+        json['sensor'],
+        json['trigger_source'],
+      ]),
+      riskProbability: _formatRiskProbability(
+        json['risk_probability'] ??
+            json['probability'] ??
+            json['risk_score'],
+      ),
+      assignedTo: _firstNonEmptyString([
+        _stringFromObject(json['assigned_to']),
+        _stringFromObject(json['assignee']),
+        _stringFromObject(json['assigned_user']),
+      ]),
+      recommendedAction: _firstNonEmptyString([
+        json['recommended_action'],
+        json['recommendedAction'],
+        json['action'],
+      ]),
+      severityLabel: rawSeverity,
+      zoneRiskLevel: riskFromString(_firstNonEmptyString([
+        json['zone_risk_level'],
+        json['risk_level'],
+        json['alert_level'],
+        zone is Map<String, dynamic> ? zone['risk_level'] : null,
+        zone is Map<String, dynamic> ? zone['severity'] : null,
+        rawSeverity,
+      ])),
+    );
+  }
 }
 
 // ── Notification Models ──────────────────────────────────────────────────
@@ -296,6 +477,8 @@ class ReportModel {
   final String title;
   final String description;
   final ReportStatus status;
+  final RiskLevel riskLevel;
+  final String? severity;
   final String? zoneId;
   final String? zoneName;
   final String? authorId;
@@ -308,6 +491,8 @@ class ReportModel {
     required this.title,
     required this.description,
     required this.status,
+    this.riskLevel = RiskLevel.unknown,
+    this.severity,
     this.zoneId,
     this.zoneName,
     this.authorId,
@@ -316,20 +501,93 @@ class ReportModel {
     this.createdAt,
   });
 
+  static List<String> _extractAttachments(Map<String, dynamic> json) {
+    final urls = <String>{};
+    const keys = [
+      'attachments',
+      'images',
+      'photos',
+      'files',
+      'media',
+      'evidence',
+      'image_urls',
+      'photo_urls',
+    ];
+
+    for (final key in keys) {
+      _collectMediaUrls(json[key], urls);
+    }
+
+    return urls.toList(growable: false);
+  }
+
+  static RiskLevel _extractRiskLevel(Map<String, dynamic> json) {
+    final zone = json['zone'];
+    return riskFromString(_firstNonEmptyString([
+      json['risk_level'],
+      json['severity'],
+      json['alert_level'],
+      zone is Map<String, dynamic> ? zone['risk_level'] : null,
+      zone is Map<String, dynamic> ? zone['severity'] : null,
+      json['status'],
+    ]));
+  }
+
   factory ReportModel.fromJson(Map<String, dynamic> json) => ReportModel(
     id:          json['id']?.toString() ?? json['_id']?.toString() ?? '',
-    title:       json['title']?.toString() ?? '',
-    description: json['description']?.toString() ?? json['content']?.toString() ?? '',
+    title:       _firstNonEmptyString([
+                  json['title'],
+                  json['name'],
+                  json['report_type'],
+                  'Untitled Report',
+                ]) ??
+                'Untitled Report',
+    description: _firstNonEmptyString([
+                  json['description'],
+                  json['content'],
+                  json['remarks'],
+                  json['notes'],
+                ]) ??
+                '',
     status:      reportStatusFromString(json['status']?.toString()),
-    zoneId:      json['zone_id']?.toString(),
-    zoneName:    json['zone_name']?.toString(),
-    authorId:    json['author_id']?.toString() ?? json['user_id']?.toString(),
-    authorName:  json['author_name']?.toString(),
-    attachments: (json['attachments'] as List<dynamic>?)
-        ?.map((e) => e.toString()).toList() ?? [],
-    createdAt:   json['created_at'] != null
-        ? DateTime.tryParse(json['created_at'].toString())
-        : null,
+    riskLevel:   _extractRiskLevel(json),
+    severity:    _firstNonEmptyString([
+                  json['severity'],
+                  json['risk_level'],
+                  json['alert_level'],
+                ]),
+    zoneId:      _firstNonEmptyString([
+                  json['zone_id'],
+                  json['zone'] is Map<String, dynamic>
+                      ? (json['zone'] as Map<String, dynamic>)['id']
+                      : null,
+                ]),
+    zoneName:    _firstNonEmptyString([
+                  json['zone_name'],
+                  json['zone'] is Map<String, dynamic>
+                      ? (json['zone'] as Map<String, dynamic>)['name']
+                      : null,
+                  json['district'],
+                ]),
+    authorId:    _firstNonEmptyString([
+                  json['author_id'],
+                  json['user_id'],
+                  json['reported_by_id'],
+                ]),
+    authorName:  _firstNonEmptyString([
+                  json['author_name'],
+                  json['reported_by'],
+                  json['submitted_by'],
+                ]),
+    attachments: _extractAttachments(json),
+    createdAt:   DateTime.tryParse(
+                  _firstNonEmptyString([
+                        json['created_at'],
+                        json['submitted_at'],
+                        json['updated_at'],
+                      ]) ??
+                      '',
+                ),
   );
 }
 
@@ -342,6 +600,80 @@ CrackReportStatus crackStatusFromString(String? s) => switch (s?.toLowerCase()) 
   'reviewed' => CrackReportStatus.reviewed,
   _          => CrackReportStatus.pending,
 };
+
+const _backendBaseUrl = 'https://rockefeller-production.up.railway.app';
+
+String _normalizeBackendMediaUrl(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) return value;
+
+  final uri = Uri.tryParse(value);
+  if (uri != null && uri.hasScheme) return value;
+  if (value.startsWith('//')) return 'https:$value';
+  if (value.startsWith('/')) return '$_backendBaseUrl$value';
+  return '$_backendBaseUrl/$value';
+}
+
+void _collectMediaUrls(dynamic value, Set<String> out) {
+  if (value == null) return;
+
+  if (value is String) {
+    final text = value.trim();
+    if (text.isNotEmpty) out.add(_normalizeBackendMediaUrl(text));
+    return;
+  }
+
+  if (value is List) {
+    for (final item in value) {
+      _collectMediaUrls(item, out);
+    }
+    return;
+  }
+
+  if (value is Map<String, dynamic>) {
+    const urlKeys = [
+      'url',
+      'uri',
+      'path',
+      'file',
+      'file_url',
+      'image_url',
+      'photo_url',
+      'secure_url',
+      'src',
+    ];
+    for (final key in urlKeys) {
+      _collectMediaUrls(value[key], out);
+    }
+
+    const nestedKeys = ['photos', 'images', 'files', 'attachments', 'media'];
+    for (final key in nestedKeys) {
+      _collectMediaUrls(value[key], out);
+    }
+  }
+}
+
+List<String> _extractCrackReportPhotos(Map<String, dynamic> json) {
+  final urls = <String>{};
+
+  const keys = [
+    'photos',
+    'images',
+    'image_urls',
+    'photo_urls',
+    'attachments',
+    'media',
+    'evidence',
+    'image',
+    'photo',
+  ];
+
+  for (final key in keys) {
+    _collectMediaUrls(json[key], urls);
+  }
+
+  return urls.toList(growable: false);
+}
 
 class CrackReportModel {
   final String id;
@@ -369,17 +701,36 @@ class CrackReportModel {
   factory CrackReportModel.fromJson(Map<String, dynamic> json) =>
       CrackReportModel(
         id:             json['id']?.toString() ?? json['_id']?.toString() ?? '',
-        location:       json['location']?.toString() ?? '',
-        description:    json['description']?.toString() ?? '',
+        location:       _firstNonEmptyString([
+                          json['location'],
+                          json['zone_name'],
+                          json['site'],
+                          json['district'],
+                        ]) ??
+                        '',
+        description:    _firstNonEmptyString([
+                          json['description'],
+                          json['notes'],
+                          json['message'],
+                        ]) ??
+                        '',
         submissionMode: json['submission_mode']?.toString() ?? 'admin',
         status:         crackStatusFromString(json['status']?.toString()),
-        severity:       json['severity']?.toString(),
+        severity:       _firstNonEmptyString([
+                          json['severity'],
+                          json['risk_level'],
+                          json['alert_level'],
+                        ]),
         zoneId:         json['zone_id']?.toString(),
-        photos: (json['photos'] as List<dynamic>?)
-            ?.map((e) => e.toString()).toList() ?? [],
-        createdAt: json['created_at'] != null
-            ? DateTime.tryParse(json['created_at'].toString())
-            : null,
+        photos:         _extractCrackReportPhotos(json),
+        createdAt:      DateTime.tryParse(
+                          _firstNonEmptyString([
+                                json['created_at'],
+                                json['submitted_at'],
+                                json['updated_at'],
+                              ]) ??
+                              '',
+                        ),
       );
 }
 
@@ -462,48 +813,149 @@ class ExplorationModel {
 // ── Prediction Models ─────────────────────────────────────────────────────
 
 class PredictionSummary {
-  final double overallRisk;
-  final int highRiskZones;
-  final String forecastPeriod;
-  final String confidence;
+  final int totalZones;
+  final int criticalOrHigh;
+  final int predictedToday;
+  final double avgHazardScore;
+  final bool model1Available;
+  final Map<String, int> riskDistribution;
 
   const PredictionSummary({
-    required this.overallRisk,
-    required this.highRiskZones,
-    required this.forecastPeriod,
-    required this.confidence,
+    required this.totalZones,
+    required this.criticalOrHigh,
+    required this.predictedToday,
+    required this.avgHazardScore,
+    required this.model1Available,
+    required this.riskDistribution,
   });
 
-  factory PredictionSummary.fromJson(Map<String, dynamic> json) =>
-      PredictionSummary(
-        overallRisk:    (json['overall_risk'] as num?)?.toDouble() ?? 0,
-        highRiskZones:  (json['high_risk_zones'] as num?)?.toInt() ?? 0,
-        forecastPeriod: json['forecast_period']?.toString() ?? '24h',
-        confidence:     json['confidence']?.toString() ?? 'N/A',
+  static int _readCount(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+      if (value is String) {
+        final parsed = int.tryParse(value.trim());
+        if (parsed != null) return parsed;
+      }
+    }
+    return 0;
+  }
+
+  static Map<String, int> _readRiskDistribution(Map<String, dynamic> json) {
+    final raw = json['risk_distribution'];
+    if (raw is! Map<String, dynamic>) return <String, int>{};
+    return raw.map((k, v) {
+      if (v is num) return MapEntry(k, v.toInt());
+      return MapEntry(k, int.tryParse(v.toString()) ?? 0);
+    });
+  }
+
+  factory PredictionSummary.fromJson(Map<String, dynamic> json) => PredictionSummary(
+        totalZones: _readCount(json, const ['total_zones', 'total']),
+        criticalOrHigh: _readCount(json, const ['critical_or_high', 'high_risk_zones']),
+        predictedToday: _readCount(json, const ['predicted_today']),
+        avgHazardScore: _numToDouble(json['avg_hazard_score']) ?? 0,
+        model1Available: json['model1_available'] as bool? ?? false,
+        riskDistribution: _readRiskDistribution(json),
+      );
+
+  double get avgHazardFraction => (avgHazardScore / 100).clamp(0.0, 1.0);
+}
+
+class PredictionFactor {
+  final String key;
+  final String label;
+  final dynamic value;
+  final double impact;
+
+  const PredictionFactor({
+    required this.key,
+    required this.label,
+    required this.value,
+    required this.impact,
+  });
+
+  factory PredictionFactor.fromJson(Map<String, dynamic> json) => PredictionFactor(
+        key: json['key']?.toString() ?? 'factor',
+        label: json['label']?.toString() ?? 'Factor',
+        value: json['value'],
+        impact: _numToDouble(json['impact']) ?? 0,
       );
 }
 
 class ZonePrediction {
   final String zoneId;
   final String zoneName;
+  final String mineName;
+  final String district;
+  final RiskLevel currentRisk;
   final RiskLevel predictedRisk;
-  final double probability;
+  final double currentRiskScore;
+  final double predictedRiskScore;
+  final double hazardScore;
+  final List<double> forecastRainfall7dMm;
+  final bool latestBlastAnomaly;
+  final bool model1Available;
+  final DateTime? predictedAt;
+  final List<PredictionFactor> factorBreakdown;
   final String? recommendation;
 
   const ZonePrediction({
     required this.zoneId,
     required this.zoneName,
+    required this.mineName,
+    required this.district,
+    required this.currentRisk,
     required this.predictedRisk,
-    required this.probability,
+    required this.currentRiskScore,
+    required this.predictedRiskScore,
+    required this.hazardScore,
+    required this.forecastRainfall7dMm,
+    required this.latestBlastAnomaly,
+    required this.model1Available,
+    required this.factorBreakdown,
+    this.predictedAt,
     this.recommendation,
   });
+
+  static List<double> _toDoubleList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.map((e) => _numToDouble(e) ?? 0).toList(growable: false);
+  }
+
+  static List<PredictionFactor> _toFactors(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(PredictionFactor.fromJson)
+        .toList(growable: false);
+  }
 
   factory ZonePrediction.fromJson(Map<String, dynamic> json) =>
       ZonePrediction(
         zoneId:         json['zone_id']?.toString() ?? '',
         zoneName:       json['zone_name']?.toString() ?? '',
-        predictedRisk:  riskFromString(json['predicted_risk']?.toString()),
-        probability:    (json['probability'] as num?)?.toDouble() ?? 0,
+        mineName:       json['mine_name']?.toString() ?? '-',
+        district:       json['district']?.toString() ?? '-',
+        currentRisk:    riskFromString(
+          _firstNonEmptyString([json['current_risk_level'], json['current_risk']]) ?? '',
+        ),
+        predictedRisk:  riskFromString(
+          _firstNonEmptyString([json['predicted_risk_level'], json['predicted_risk']]) ?? '',
+        ),
+        currentRiskScore: _numToDouble(json['current_risk_score']) ?? 0,
+        predictedRiskScore: _numToDouble(json['predicted_risk_score']) ?? 0,
+        hazardScore:    _numToDouble(json['hazard_score']) ?? 0,
+        forecastRainfall7dMm: _toDoubleList(json['forecast_rainfall_7d_mm']),
+        latestBlastAnomaly: json['latest_blast_anomaly'] as bool? ?? false,
+        model1Available: json['model1_available'] as bool? ?? false,
+        predictedAt: json['predicted_at'] != null
+            ? DateTime.tryParse(json['predicted_at'].toString())
+            : null,
+        factorBreakdown: _toFactors(json['factor_breakdown']),
         recommendation: json['recommendation']?.toString(),
       );
+
+  double get rainfallTotalMm =>
+      forecastRainfall7dMm.fold<double>(0, (sum, val) => sum + val);
 }

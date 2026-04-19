@@ -171,6 +171,7 @@ class AlertCard extends StatelessWidget {
   final VoidCallback? onAcknowledge;
   final VoidCallback? onResolve;
   final UserRole currentRole;
+  final bool compact;
 
   const AlertCard({
     super.key,
@@ -178,128 +179,371 @@ class AlertCard extends StatelessWidget {
     required this.currentRole,
     this.onAcknowledge,
     this.onResolve,
+    this.compact = false,
   });
 
-  Color get _borderColor => switch (alert.severity) {
+  Color get _severityColor => switch (alert.severity) {
     AlertSeverity.critical => AppTheme.primaryContainer,
     AlertSeverity.warning  => AppTheme.amberWarning,
     AlertSeverity.info     => const Color(0xFF334155),
   };
 
-  Color get _labelColor => switch (alert.severity) {
-    AlertSeverity.critical => AppTheme.primary,
-    AlertSeverity.warning  => AppTheme.amberWarning,
-    AlertSeverity.info     => const Color(0xFF64748B),
-  };
+  Color get _zoneColor {
+    if (alert.zoneRiskLevel != RiskLevel.unknown) {
+      return switch (alert.zoneRiskLevel) {
+        RiskLevel.high => AppTheme.errorRedHud,
+        RiskLevel.medium => AppTheme.amberWarning,
+        RiskLevel.low => AppTheme.riskLow,
+        RiskLevel.nominal => AppTheme.riskNominal,
+        RiskLevel.unknown => _severityColor,
+      };
+    }
+    return _severityColor;
+  }
 
-  String get _severityLabel => switch (alert.severity) {
-    AlertSeverity.critical => 'CRITICAL RISK',
-    AlertSeverity.warning  => 'ELEVATED RISK',
-    AlertSeverity.info     => 'LOW RISK',
-  };
+  String get _severityLabel {
+    final raw = alert.severityLabel?.trim().toLowerCase();
+    if (raw != null && raw.isNotEmpty) {
+      if (raw == 'critical' || raw == 'high') return 'EMERGENCY';
+      return raw.toUpperCase();
+    }
+    return switch (alert.severity) {
+      AlertSeverity.critical => 'EMERGENCY',
+      AlertSeverity.warning  => 'WARNING',
+      AlertSeverity.info     => 'INFO',
+    };
+  }
+
+  String get _displayTitle {
+    final title = alert.title.trim();
+    final zoneName = alert.zoneName?.trim();
+    if ((title.isEmpty || title.toLowerCase() == 'alert') &&
+        zoneName != null &&
+        zoneName.isNotEmpty) {
+      return zoneName;
+    }
+    return title.isEmpty ? (zoneName ?? 'Alert') : title;
+  }
+
+  String get _district =>
+      (alert.district ?? alert.location ?? 'Unknown').toUpperCase();
+    String get _zoneName => alert.zoneName?.trim().isNotEmpty == true
+      ? alert.zoneName!.trim()
+      : 'Unknown zone';
+  String get _sourceSensor => alert.sourceSensor ?? 'Manual';
+  String get _riskProbability => alert.riskProbability ?? '--';
+  String get _assignedTo => alert.assignedTo ?? 'Unassigned';
+  String get _recommendedAction =>
+      (alert.recommendedAction ?? 'Recommended Action').toUpperCase();
+
+  String get _roleStatusLabel {
+    if (!currentRole.canAcknowledge && !currentRole.canResolve) return 'READ-ONLY';
+    return switch (alert.status) {
+      AlertStatus.active => 'ACTIVE',
+      AlertStatus.acknowledged => 'ACKNOWLEDGED',
+      AlertStatus.resolved => 'RESOLVED',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final canAck     = currentRole.canAcknowledge && alert.status == AlertStatus.active;
     final canResolve = currentRole.canResolve && alert.status != AlertStatus.resolved;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 420 || compact;
+        final titleSize = isNarrow ? 20.0 : 24.0;
+        final bodySize = isNarrow ? 12.0 : 13.0;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        border: Border(left: BorderSide(color: _borderColor, width: 4)),
-        boxShadow: alert.severity == AlertSeverity.critical
-            ? [BoxShadow(color: AppTheme.errorRedHud.withValues(alpha: 0.12), blurRadius: 15)]
-            : null,
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_severityLabel,
-                  style: TextStyle(
-                    fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5, color: _labelColor)),
-                const SizedBox(height: 4),
-                Text(alert.title,
-                  style: const TextStyle(
-                    fontFamily: 'SpaceGrotesk', fontSize: 16, fontWeight: FontWeight.w700,
-                    color: AppTheme.onSurface)),
-              ]),
-              if (alert.createdAt != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  color: AppTheme.surfaceContainerLowest,
-                  child: Text(_timeAgo(alert.createdAt!),
-                    style: const TextStyle(
-                      fontFamily: 'Courier', fontSize: 9, color: Color(0xFF64748B))),
-                ),
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceContainer,
+            border: Border(left: BorderSide(color: _zoneColor, width: 4)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              )
             ],
           ),
-          if (alert.description.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(alert.description,
-              style: const TextStyle(
-                fontFamily: 'Inter', fontSize: 12, color: AppTheme.onSurfaceVariant,
-                height: 1.4)),
-          ],
-          if (alert.location != null) ...[
-            const SizedBox(height: 8),
-            Row(children: [
-              const Icon(Icons.location_on, size: 12, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(alert.location!, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
-            ]),
-          ],
-          if (canAck || canResolve) ...[
-            const SizedBox(height: 12),
-            Row(children: [
-              if (canAck)
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onAcknowledge,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: AppTheme.surfaceContainerHighest,
-                      alignment: Alignment.center,
-                      child: const Text('ACKNOWLEDGE',
-                        style: TextStyle(
-                          fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5, color: AppTheme.onSurface)),
+          padding: EdgeInsets.all(isNarrow ? 12 : 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'DISTRICT: $_district',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        letterSpacing: 1.2,
+                        color: Color(0xFF8A8A8A),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-              if (canAck && canResolve) const SizedBox(width: 8),
-              if (canResolve)
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onResolve,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      color: AppTheme.primaryContainer,
-                      alignment: Alignment.center,
-                      child: const Text('RESOLVE',
-                        style: TextStyle(
-                          fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5, color: AppTheme.onPrimaryFixed)),
+                  if (alert.createdAt != null)
+                    Text(
+                      _timeAgo(alert.createdAt!),
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        color: Color(0xFF8A8A8A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: _zoneColor,
+                      shape: BoxShape.circle,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _displayTitle,
+                      maxLines: isNarrow ? 2 : 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'SpaceGrotesk',
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                        color: AppTheme.onSurface,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _TagPill(label: _severityLabel, color: _severityColor),
+                ],
+              ),
+              if (alert.description.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  alert.description.trim(),
+                  maxLines: isNarrow ? 3 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: bodySize,
+                    height: 1.35,
+                    color: AppTheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-            ]),
-          ],
-        ],
-      ),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _MetaChip(label: 'ZONE', value: _zoneName, valueColor: _zoneColor),
+                  _MetaChip(label: 'SOURCE', value: _sourceSensor),
+                  _MetaChip(label: 'RISK', value: _riskProbability),
+                  if (!compact) _MetaChip(label: 'OWNER', value: _assignedTo),
+                ],
+              ),
+              if (_recommendedAction.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.rule_folder_outlined,
+                      size: 14,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _recommendedAction,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: bodySize,
+                          letterSpacing: 0.3,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFFD8C0B8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (canAck)
+                    _ActionButton(
+                      label: 'ACKNOWLEDGE',
+                      onTap: onAcknowledge,
+                      highlighted: false,
+                    ),
+                  if (canResolve)
+                    _ActionButton(
+                      label: 'RESOLVE',
+                      onTap: onResolve,
+                      highlighted: true,
+                    ),
+                  if (!canAck && !canResolve)
+                    Text(
+                      _roleStatusLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: AppTheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m AGO';
-    if (diff.inHours < 24)   return '${diff.inHours}h AGO';
-    return '${diff.inDays}d AGO';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}M AGO';
+    if (diff.inHours < 24) return '${diff.inHours}H AGO';
+    return '${diff.inDays}D AGO';
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool highlighted;
+
+  const _ActionButton({
+    required this.label,
+    required this.onTap,
+    required this.highlighted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: highlighted ? AppTheme.primaryContainer : AppTheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 130),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.3,
+                color: highlighted ? AppTheme.onPrimaryFixed : AppTheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TagPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _TagPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        border: Border.all(color: color.withValues(alpha: 0.9)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 10,
+          letterSpacing: 1.1,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _MetaChip({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: AppTheme.surfaceContainerHighest,
+      child: RichText(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 10,
+                color: AppTheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                color: valueColor ?? AppTheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

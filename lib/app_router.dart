@@ -90,7 +90,18 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'create', builder: (_, __) => const CreateExplorationScreen()),
             ],
           ),
-          GoRoute(path: '/predictions', builder: (_, __) => const PredictionsScreen()),
+          GoRoute(
+            path: '/predictions',
+            builder: (_, __) => const PredictionsScreen(),
+            routes: [
+              GoRoute(
+                path: ':zoneId',
+                builder: (_, state) => PredictionZoneDetailScreen(
+                  zoneId: Uri.decodeComponent(state.pathParameters['zoneId']!),
+                ),
+              ),
+            ],
+          ),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(path: '/admin', builder: (_, state) {

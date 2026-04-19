@@ -41,6 +41,7 @@ class NotificationState {
 
 class NotificationNotifier extends Notifier<NotificationState> {
   StreamSubscription<WsEvent>? _wsSubscription;
+  Timer? _pollTimer;
   String? _connectedUserId;
 
   @override
@@ -69,6 +70,7 @@ class NotificationNotifier extends Notifier<NotificationState> {
     _disconnectWs();
     _connectedUserId = userId;
     _ws.connect(userId);
+    _startPolling();
 
     _wsSubscription = _ws.events.listen((event) {
       if (event.type == WsEventType.notification) {
@@ -81,8 +83,19 @@ class NotificationNotifier extends Notifier<NotificationState> {
   void _disconnectWs() {
     _wsSubscription?.cancel();
     _wsSubscription = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
     _connectedUserId = null;
     _ws.disconnect();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      if (_connectedUserId != null) {
+        fetchNotifications();
+      }
+    });
   }
 
   Future<void> fetchNotifications() async {
@@ -241,6 +254,12 @@ final reportsProvider = FutureProvider<List<ReportModel>>((ref) async {
       .toList();
 });
 
+final reportDetailProvider = FutureProvider.family<ReportModel, String>((ref, reportId) async {
+  final api = ref.read(apiClientProvider);
+  final data = await api.get('/api/reports/$reportId');
+  return ReportModel.fromJson(data as Map<String, dynamic>);
+});
+
 // ── Crack Reports Provider ─────────────────────────────────────────────────
 final crackReportsProvider = FutureProvider<List<CrackReportModel>>((ref) async {
   final api = ref.read(apiClientProvider);
@@ -248,6 +267,13 @@ final crackReportsProvider = FutureProvider<List<CrackReportModel>>((ref) async 
   return (data as List<dynamic>)
       .map((e) => CrackReportModel.fromJson(e as Map<String, dynamic>))
       .toList();
+});
+
+final crackReportDetailProvider =
+    FutureProvider.family<CrackReportModel, String>((ref, reportId) async {
+  final api = ref.read(apiClientProvider);
+  final data = await api.get('/api/crack-reports/$reportId');
+  return CrackReportModel.fromJson(data as Map<String, dynamic>);
 });
 
 // ── Blasts Provider ────────────────────────────────────────────────────────
@@ -278,7 +304,29 @@ final predictionSummaryProvider = FutureProvider<PredictionSummary>((ref) async 
 final zonePredictionsProvider = FutureProvider<List<ZonePrediction>>((ref) async {
   final api = ref.read(apiClientProvider);
   final data = await api.get('/api/predictions/zones');
-  return (data as List<dynamic>)
-      .map((e) => ZonePrediction.fromJson(e as Map<String, dynamic>))
+  final list = _extractListPayload(
+    data,
+    preferredKeys: const ['zones', 'items', 'results'],
+    allowSingleObject: true,
+  );
+  return _mapItems(list)
+      .map(ZonePrediction.fromJson)
       .toList();
+});
+
+final zonePredictionDetailProvider =
+    FutureProvider.family<ZonePrediction?, String?>((ref, zoneId) async {
+  final id = zoneId?.trim();
+  if (id == null || id.isEmpty) return null;
+
+  final api = ref.read(apiClientProvider);
+  final data = await api.get('/api/predictions/zones/$id');
+  if (data is Map<String, dynamic>) {
+    return ZonePrediction.fromJson(data);
+  }
+  final decoded = _decodePossiblyJsonString(data);
+  if (decoded is Map<String, dynamic>) {
+    return ZonePrediction.fromJson(decoded);
+  }
+  return null;
 });

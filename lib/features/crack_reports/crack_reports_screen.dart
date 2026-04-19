@@ -68,26 +68,52 @@ class _CrackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final previewUrl = report.photos.isNotEmpty ? report.photos.first : null;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         color: AppTheme.surfaceContainer,
-        child: Row(children: [
-          Container(width: 3, height: 60, color: _color),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(report.status.name.toUpperCase(),
-              style: TextStyle(fontFamily: 'Inter', fontSize: 8, letterSpacing: 1.5,
-                fontWeight: FontWeight.w700, color: _color)),
-            const SizedBox(height: 4),
-            Text(report.location,
-              style: const TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 14,
-                fontWeight: FontWeight.w600, color: AppTheme.onSurface)),
-            const SizedBox(height: 4),
-            Text(report.severity?.toUpperCase() ?? 'UNKNOWN SEVERITY',
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 10, color: AppTheme.onSurfaceVariant)),
-          ])),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 3, height: 72, color: _color),
+          const SizedBox(width: 10),
+          if (previewUrl != null) ...[
+            _CrackPhotoThumb(
+              imageUrl: previewUrl,
+              width: 72,
+              height: 72,
+              onTap: () => _showImagePreview(context, previewUrl),
+            ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(report.status.name.toUpperCase(),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 8, letterSpacing: 1.5,
+                  fontWeight: FontWeight.w700, color: _color)),
+              const SizedBox(height: 4),
+              Text(report.location,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontFamily: 'SpaceGrotesk', fontSize: 14,
+                  fontWeight: FontWeight.w600, color: AppTheme.onSurface)),
+              const SizedBox(height: 4),
+              Text(report.severity?.toUpperCase() ?? 'UNKNOWN SEVERITY',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 10, color: AppTheme.onSurfaceVariant)),
+              if (report.photos.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text('${report.photos.length} IMAGE${report.photos.length == 1 ? '' : 'S'}',
+                  style: const TextStyle(
+                    fontFamily: 'Inter', fontSize: 8, letterSpacing: 1.0,
+                    color: AppTheme.onSurfaceVariant,
+                  )),
+              ],
+            ]),
+          ),
+          const SizedBox(width: 8),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(report.submissionMode.toUpperCase(),
               style: const TextStyle(fontFamily: 'Inter', fontSize: 8, letterSpacing: 1,
@@ -229,11 +255,7 @@ class CrackReportDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(currentRoleProvider);
-    final async = ref.watch(FutureProvider<CrackReportModel>((ref) async {
-      final api = ref.read(apiClientProvider);
-      final data = await api.get('/api/crack-reports/$reportId');
-      return CrackReportModel.fromJson(data as Map<String, dynamic>);
-    }));
+    final async = ref.watch(crackReportDetailProvider(reportId));
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -264,8 +286,34 @@ class CrackReportDetailScreen extends ConsumerWidget {
               Text(report.submissionMode.toUpperCase(),
                 style: const TextStyle(fontFamily: 'Inter', fontSize: 9, letterSpacing: 1.5, color: Color(0xFF64748B))),
             ]),
+            if (report.photos.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text('EVIDENCE (${report.photos.length})',
+                style: const TextStyle(
+                  fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5, color: AppTheme.onSurfaceVariant,
+                )),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 184,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: report.photos.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) => _CrackPhotoThumb(
+                    imageUrl: report.photos[i],
+                    width: 164,
+                    height: 184,
+                    onTap: () => _showImagePreview(context, report.photos[i]),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
-            Text(report.description,
+            Text(
+              report.description.trim().isEmpty
+                  ? 'No description available for this crack report.'
+                  : report.description,
               style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: AppTheme.onSurfaceVariant, height: 1.6)),
             if (role.canAcknowledge && report.status == CrackReportStatus.pending) ...[
               const SizedBox(height: 28),
@@ -285,4 +333,82 @@ class CrackReportDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _CrackPhotoThumb extends StatelessWidget {
+  final String imageUrl;
+  final double width;
+  final double height;
+  final VoidCallback? onTap;
+
+  const _CrackPhotoThumb({
+    required this.imageUrl,
+    required this.width,
+    required this.height,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        height: height,
+        color: AppTheme.surfaceContainerHighest,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.broken_image_outlined, color: AppTheme.onSurfaceVariant),
+          ),
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+void _showImagePreview(BuildContext context, String imageUrl) {
+  showDialog(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: 0.9),
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(12),
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox(
+                height: 260,
+                child: Center(
+                  child: Icon(Icons.broken_image_outlined, color: AppTheme.onSurfaceVariant, size: 34),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

@@ -100,6 +100,7 @@ class DashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: AlertCard(
                           alert: a,
+                          compact: true,
                           currentRole: ref.read(currentRoleProvider),
                           onAcknowledge: () => _acknowledgeAlert(ref, a.id),
                           onResolve: () => _resolveAlert(ref, a.id),
@@ -340,6 +341,7 @@ class _QuickActions extends StatelessWidget {
       children: [
         _ActionChip(label: 'File Report', icon: Icons.description, onTap: () => context.go('/reports/create')),
         _ActionChip(label: 'New Crack', icon: Icons.broken_image, onTap: () => context.go('/crack-reports/create')),
+        _ActionChip(label: 'Perdications', icon: Icons.analytics, onTap: () => context.go('/predictions')),
         if (role.canAcknowledge)
           _ActionChip(label: 'Blast Event', icon: Icons.bolt, onTap: () => context.go('/blasts/create')),
         if (role.isAdmin)

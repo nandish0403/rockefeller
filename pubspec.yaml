@@ -1,0 +1,63 @@
+name: rock_app
+description: "Rockefeller MineSafe AI - Mobile Operations Platform"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP & Networking
+  dio: ^5.7.0
+  web_socket_channel: ^3.0.1
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Secure Storage
+  flutter_secure_storage: ^8.0.0
+
+  # Code Generation
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # UI
+  cached_network_image: ^3.4.1
+  cupertino_icons: ^1.0.8
+
+  # Map
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Media
+  image_picker: ^1.0.4
+  file_picker: ^11.0.2
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.5.1
+  equatable: ^2.0.7
+  logger: ^2.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.6.1
+
+flutter:
+  uses-material-design: true
+
+dependency_overrides:
+  path_provider_foundation: 2.4.1
+  image_picker_android: 0.8.13+15

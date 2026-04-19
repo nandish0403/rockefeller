@@ -1,365 +1,222 @@
-# Rockefeller Flutter App Integration Blueprint
+# Rockefeller Mobile App Agent Prompt (Current Project - April 2026)
 
-## Build Directive
+Use this exact prompt with your coding agent.
 
-This file is the implementation guide for the Flutter mobile app.
-Use the backend API as the single source of truth for all production data.
-Do not keep separate mock models for live features.
+## Prompt
 
-## Product Mission
+You are a senior Flutter engineer. Build a production-ready Flutter mobile app for the existing Rockefeller (MineSafe AI) platform.
 
-Rockefeller helps mine teams detect hazards early, submit field incidents quickly, and coordinate response with full traceability.
+Important context:
+- The web platform already exists (React + FastAPI + MongoDB + ML services).
+- The Flutter app must integrate with the same backend and business logic.
+- Do not build a mock/demo app. Use real APIs, auth, roles, and realtime flows.
+- Keep architecture scalable and clean for long-term maintenance.
 
-Core pillars:
-- Monitoring
-- Incident capture
-- Escalation and notifications
-- Forecast-aware planning
-- Historical analysis
+## Product Goal
 
-## Flutter Stack (Recommended)
+Deliver a role-aware mobile operations app for mine safety with these core pillars:
+- Zone risk monitoring
+- Alerts and escalation
+- Blast and exploration workflows
+- Field report and crack report workflows
+- Prediction and analytics visibility
+- Realtime notifications and emergency broadcast
 
-- Flutter 3.22+
-- Dart 3+
-- dio for REST calls
-- flutter_secure_storage for token storage
-- riverpod or bloc for state management
-- go_router for routing
-- websocket_channel for realtime notifications
-- json_serializable or freezed for typed models
+## Backend Source of Truth
 
-## Backend Connection
+Use backend API as single source of truth.
 
-Use these base URLs:
-
-- Local backend: http://localhost:8000
-- Railway backend: https://rockefeller-production.up.railway.app
+Base URLs:
+- Local: http://localhost:8000
+- Production: https://rockefeller-production.up.railway.app
 
 Health check:
 - GET /api/health
 
-Expected response:
+## Required Flutter Stack
 
-```json
-{
-	"status": "ok",
-	"version": "2.0.0"
-}
-```
+- Flutter 3.22+
+- Dart 3+
+- dio (HTTP)
+- flutter_secure_storage (JWT)
+- riverpod (preferred) or bloc
+- go_router
+- websocket_channel
+- freezed + json_serializable (typed models)
+- firebase_messaging or flutter_local_notifications (local/push UX layer)
 
-## Auth Integration
+## Authentication and Session
 
-Login endpoint:
+Implement:
 - POST /api/auth/login
+- GET /api/auth/me
 
-Request:
+Rules:
+- Store JWT in secure storage only.
+- Inject Authorization: Bearer <token> on protected APIs.
+- On 401/403: clear session and return to login.
+- Restore session on app start.
 
-```json
-{
-	"email": "admin@geoalert.com",
-	"password": "admin123"
-}
-```
+## Roles and Access
 
-Response shape:
+Support these roles:
+- admin
+- safety_officer
+- field_worker
 
-```json
-{
-	"access_token": "<jwt>",
-	"token_type": "bearer",
-	"user": {
-		"id": "...",
-		"name": "...",
-		"email": "...",
-		"role": "admin|safety_officer|field_worker",
-		"district": "...",
-		"zone_assigned": "...",
-		"avatar_url": "..."
-	}
-}
-```
+Behavior rules:
+- field_worker: read-only alerts view, no resolve actions.
+- safety_officer: acknowledge alerts + emergency controls.
+- admin: acknowledge + resolve + full admin controls.
 
-Token usage:
-- Add header Authorization: Bearer <token> on protected calls.
-- Rehydrate session with GET /api/auth/me on app startup.
+## Feature Scope (Must Work)
 
-## Realtime Notifications
+Build these functional modules in Flutter:
 
-WebSocket endpoint:
-- /ws/{user_id}?token=<jwt>
+1. Dashboard
+- KPI summary
+- risk overview
+- recent alerts
+- quick operational status
 
-Event payload shape:
+2. Map and Zones
+- zone list/map visualization
+- zone details
+- risk level and forecast context
 
-```json
-{
-	"event": "notification",
-	"notification": {
-		"id": "...",
-		"user_id": "...",
-		"title": "...",
-		"message": "...",
-		"zone_id": "...",
-		"zone_name": "...",
-		"type": "alert|info|warning",
-		"is_read": false,
-		"created_at": "2026-03-29T..."
-	}
-}
-```
+3. Alerts
+- list active/acknowledged/resolved alerts
+- acknowledge/resolve flows by role permissions
 
-Reconnect policy:
-- Auto reconnect with backoff.
-- Re-fetch notification list after reconnect.
+4. Reports
+- field reports list/detail
+- create field report with multipart upload
+- AI draft generation via POST /api/reports/generate-ai-draft
 
-## Backend Data Sources by Feature
+5. Crack Reports
+- crack reports list/detail
+- submit crack report (submission_mode=ai or admin)
+- verify/review actions for allowed roles
 
-### Dashboard and Map
-- GET /api/zones
-- GET /api/risk-levels
-- GET /api/alerts
+6. Blasts
+- create blast event
+- list recent blast telemetry
+- show anomaly status returned by backend
 
-### Zone Detail
-- GET /api/zones/{id}
-- GET /api/zones/{id}/forecast
-- GET /api/alerts?zone_id={id}
+7. Explorations
+- create exploration logs
+- list exploration history
 
-### Alerts
-- GET /api/alerts
-- PATCH /api/alerts/{id}/acknowledge
-- PATCH /api/alerts/{id}/resolve
+8. Predictions and Analytics
+- show prediction summary and zone-level prediction views
+- show analytics pages with backend-fed data
 
-### Crack Reports
-- GET /api/crack-reports
-- GET /api/crack-reports/{report_id}
-- POST /api/crack-reports
-- PATCH /api/crack-reports/{report_id}/verify
-- PATCH /api/crack-reports/{report_id}/reject
-- PATCH /api/crack-reports/{report_id}/notify-critical
+9. Profile
+- user profile and relevant preferences
 
-### Field Reports
-- GET /api/reports
-- GET /api/reports/{report_id}
-- POST /api/reports
-- POST /api/reports/generate-ai-draft
+10. Admin (role-restricted)
+- admin operational actions that already exist in backend contract
 
-### Presence and Emergency
-- PATCH /api/presence/me/check-in
-- PATCH /api/presence/me/check-out
-- GET /api/presence/headcount
-- POST /api/emergency/broadcast
+## Notification System (Critical Requirement)
 
-### Forecast and History
-- GET /api/rainfall/forecast/{district}
-- GET /api/rainfall/zone-risk-flags
-- GET /api/history
+Implement notifications end-to-end so it works when admin sends blast-related alerts.
 
-## Core Data Structure Contracts
+1. In-app notification center
+- GET /api/notifications
+- PATCH /api/notifications/{id}/read
+- PATCH /api/notifications/read-all
 
-### User (API)
+2. Realtime websocket
+- Connect: /ws/{user_id}?token=<jwt>
+- Auto reconnect with exponential backoff.
+- On reconnect, re-fetch latest notifications.
 
-```json
-{
-	"id": "string",
-	"name": "string",
-	"email": "string",
-	"role": "admin|safety_officer|field_worker",
-	"district": "string|null",
-	"zone_assigned": "string|null",
-	"worker_id": "string|null",
-	"phone": "string|null",
-	"avatar_url": "string|null"
-}
-```
+3. Event handling
+- notification event: add to notification list, increment unread count, show in-app banner.
+- emergency_broadcast event: show high-priority full-screen alert dialog.
 
-### Zone
+4. Admin blast alert behavior (must work)
+- When admin submits blast data (POST /api/blasts), app must handle resulting alert/anomaly updates.
+- If backend raises warning/critical anomaly, all relevant users should receive realtime notification updates in app.
+- Admin must also be able to send emergency broadcast (POST /api/emergency/broadcast).
+- Broadcast must appear to recipients immediately via websocket and in notification center.
 
-```json
-{
-	"id": "string",
-	"name": "string",
-	"district": "string",
-	"mine_name": "string",
-	"risk_level": "green|yellow|orange|red",
-	"risk_score": 0.42,
-	"status": "monitoring|...",
-	"latlngs": []
-}
-```
+5. Push integration
+- GET /api/push/vapid-public-key
+- POST /api/push/subscribe
+- Register device subscription once per user session lifecycle.
 
-### Alert
+## API Coverage (Minimum)
 
-```json
-{
-	"id": "string",
-	"zone_id": "string",
-	"zone_name": "string",
-	"district": "string",
-	"risk_level": "green|yellow|orange|red",
-	"trigger_reason": "string",
-	"status": "active|acknowledged|resolved",
-	"created_at": "ISO timestamp"
-}
-```
+Implement typed API clients for:
+- /api/auth/*
+- /api/zones, /api/zones/{id}, /api/zones/{id}/forecast, /api/risk-levels
+- /api/alerts and alert actions
+- /api/reports and AI draft endpoint
+- /api/crack-reports and review actions
+- /api/blasts
+- /api/explorations
+- /api/predictions/summary, /api/predictions/zones, /api/predictions/zones/{zone_id}
+- /api/notifications
+- /api/push/*
+- /api/emergency/broadcast
+- /api/presence/* (if exposed in current backend)
+- /api/history (if exposed in current backend)
 
-### Crack Report
+## App Architecture Requirements
 
-```json
-{
-	"id": "string",
-	"zone_id": "string",
-	"zone_name": "string",
-	"reported_by": "string",
-	"crack_type": "string",
-	"severity": "low|moderate|high|critical",
-	"ai_severity_class": "string|null",
-	"ai_risk_score": 0.6,
-	"confidence": 0.87,
-	"critical_crack_flag": 0,
-	"photo_url": "/uploads/crack_reports/<file>",
-	"status": "pending|ai_scored|verified|rejected|reviewed|closed",
-	"created_at": "ISO timestamp"
-}
-```
+Use a clean feature-first structure:
 
-### Field Report
+lib/
+- core/ (network, auth, storage, error handling)
+- features/
+  - auth/
+  - dashboard/
+  - map_zones/
+  - alerts/
+  - reports/
+  - crack_reports/
+  - blasts/
+  - explorations/
+  - predictions/
+  - notifications/
+  - profile/
+  - admin/
+- shared/ (widgets, theme, utils)
+- app_router.dart
+- main.dart
 
-```json
-{
-	"id": "string",
-	"zone_id": "string",
-	"zone_name": "string",
-	"reported_by": "string",
-	"photo_url": "/uploads/reports/<file>|null",
-	"severity": "low|medium|high|critical",
-	"remarks": "string|null",
-	"review_status": "pending|reviewed|false_alarm|critical",
-	"created_at": "ISO timestamp"
-}
-```
+Engineering rules:
+- Strict typed models for request/response.
+- Centralized API error mapping from backend detail field.
+- Retry for transient network failures.
+- Offline-safe UI states (empty/loading/error).
+- Role guards on routes and actions.
+- No hardcoded business data in UI.
 
-## Multipart Submission Structures
+## UX and Reliability Requirements
 
-### Crack report submission
+- Fast launch and smooth navigation.
+- Responsive for both phone and tablet.
+- Clear severity colors for risk and alerts.
+- Accessible text sizes and tap targets.
+- Handle partial API failures without crashing whole screen.
 
-Endpoint:
-- POST /api/crack-reports
+## Definition of Done
 
-Form fields:
-- zone_id (required)
-- crack_type
-- severity
-- remarks
-- submission_mode (ai or admin)
-- coords (json string optional)
-- photo (required)
+The Flutter app is done only when all of the following are true:
+- Login/session restore works.
+- All listed modules are functional against real backend APIs.
+- Admin blast alert and emergency broadcast notification flow works end-to-end.
+- Realtime notifications update without manual refresh.
+- Role-based permissions are enforced in UI behavior.
+- App has stable error handling and loading states.
 
-AI mode returns ai_summary with fields:
+## Delivery Output Expected From Agent
 
-```json
-{
-	"ai_severity_class": "high",
-	"ai_risk_score": 0.60,
-	"confidence": 0.87,
-	"critical_crack_flag": 0,
-	"note": "AI score generated and forwarded to admin review queue."
-}
-```
-
-### Field report submission
-
-Endpoint:
-- POST /api/reports
-
-Form fields:
-- zone_id (required)
-- severity
-- remarks
-- reported_by
-- photo (optional)
-
-## AI Draft Generation for Field Report
-
-Endpoint:
-- POST /api/reports/generate-ai-draft
-
-Request body:
-
-```json
-{
-	"zone_id": "...",
-	"zone_name": "...",
-	"report_type": "visual_inspection",
-	"severity": "medium",
-	"title": "...",
-	"description": "...",
-	"observations": "...",
-	"location_detail": "...",
-	"weather_condition": "cloudy"
-}
-```
-
-Response body:
-
-```json
-{
-	"draft": {
-		"title": "...",
-		"description": "...",
-		"observations": "...",
-		"remarks": "...",
-		"severity": "low|medium|high|critical",
-		"source": "gemini|fallback"
-	},
-	"generated_at": "ISO timestamp",
-	"generated_for": "User Name"
-}
-```
-
-## Error Handling Contract
-
-Most backend errors return:
-
-```json
-{
-	"detail": "Error message"
-}
-```
-
-Flutter UI requirements:
-- Show actionable error text from detail.
-- Retry option for network failures.
-- Handle 401 by clearing token and redirecting to login.
-- Handle 403 by showing permission message.
-
-## Security and Reliability Rules
-
-- Never store JWT in shared preferences plain text.
-- Use secure storage for token.
-- Enforce role checks server side, not just client UI.
-- Reconnect websocket automatically on disconnect.
-- Keep screens usable when one API call fails (partial rendering).
-
-## Backend Environment Requirements
-
-Backend .env must include at least:
-- MONGODB_URL
-- DATABASE_NAME
-- SECRET_KEY
-- ALGORITHM
-- CORS_ORIGINS
-- GEMINI_API_KEY
-- GEMINI_MODEL
-- VAPID_PUBLIC_KEY
-- VAPID_PRIVATE_KEY
-- VAPID_CLAIMS_SUBJECT
-
-## Flutter Delivery Checklist
-
-- Login and session restore works.
-- Zone list, alerts, crack reports, field reports load from backend.
-- Crack submission supports both modes (ai and admin).
-- Admin can open crack detail and perform review actions.
-- Critical notify action works from crack review.
-- Field report AI draft generation fills form.
-- Websocket notifications appear in app without refresh.
-- All protected endpoints send bearer token.
+1. Flutter project structure and dependencies.
+2. Implemented screens and navigation.
+3. API service layer with typed DTOs/models.
+4. Auth and secure session handling.
+5. Realtime notification + push wiring.
+6. Short setup/run notes and any env vars needed.

@@ -2,13 +2,17 @@ import React from 'react';
 import { Polygon, Tooltip } from 'react-leaflet';
 import { Typography } from '@mui/material';
 import { getRiskColor } from '../../utils/riskUtils';
+import { getZoneCoordinates } from '../../utils/zoneCoordinates';
 
 export const ZonePolygon = ({ zone, onClick }) => {
   const color = getRiskColor(zone.riskLevel);
+  const points = getZoneCoordinates(zone);
+
+  if (points.length < 3) return null;
 
   return (
     <Polygon
-      positions={zone.latlngs}
+      positions={points}
       pathOptions={{
         color: color,
         fillColor: color,

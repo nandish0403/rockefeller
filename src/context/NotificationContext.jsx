@@ -23,6 +23,91 @@ const NotificationContext = createContext({
 
 const PUSH_SENT_KEY_PREFIX = "push_sub_sent";
 
+
+function showDesktopNotification(notification) {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return;
+  }
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  try {
+    const nativePopup = new Notification(notification?.title || "Rockefeller Alert", {
+      body: notification?.message || "New operational alert received.",
+      icon: "/favicon.ico",
+      tag: notification?.id || undefined,
+    });
+
+    nativePopup.onclick = () => {
+      window.focus();
+      if (notification?.zone_id) {
+        window.location.href = `/zones/${notification.zone_id}`;
+      }
+      nativePopup.close();
+    };
+
+    window.setTimeout(() => nativePopup.close(), 7000);
+  } catch {
+    // Ignore browser-specific desktop notification failures.
+  }
+}
+
+
+function playAlertSound(level = "info") {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) {
+    return;
+  }
+
+  const tones =
+    level === "emergency"
+      ? [920, 740, 980]
+      : level === "alert"
+        ? [820, 660, 880]
+        : level === "warning"
+          ? [760, 620]
+          : [640];
+
+  try {
+    const ctx = new AudioCtx();
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+
+    let cursor = ctx.currentTime;
+    tones.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = idx % 2 === 0 ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(freq, cursor);
+
+      gain.gain.setValueAtTime(0.0001, cursor);
+      gain.gain.exponentialRampToValueAtTime(0.16, cursor + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, cursor + 0.20);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(cursor);
+      osc.stop(cursor + 0.22);
+
+      cursor += 0.14;
+    });
+
+    const shutdownMs = Math.max(600, Math.ceil((cursor - ctx.currentTime + 0.25) * 1000));
+    window.setTimeout(() => {
+      void ctx.close();
+    }, shutdownMs);
+  } catch {
+    // Ignore audio playback failures caused by browser autoplay restrictions.
+  }
+}
+
 function toUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -96,16 +181,32 @@ export function NotificationProvider({ children }) {
 
         if (parsed?.event === "emergency_broadcast" && parsed?.payload) {
           setEmergencyModal(parsed.payload);
+          playAlertSound("emergency");
+          showDesktopNotification({
+            id: `emergency-${parsed.payload.alert_id || Date.now()}`,
+            title: parsed.payload.title || "Emergency Broadcast",
+            message: parsed.payload.message || "Emergency protocol activated.",
+            zone_id: parsed.payload.zone_id,
+          });
         }
 
         if (parsed?.event !== "notification" || !parsed?.notification) return;
 
-        setNotifications((prev) => [parsed.notification, ...prev]);
+        const incoming = parsed.notification;
+        setNotifications((prev) => (
+          prev.some((row) => row.id === incoming.id)
+            ? prev
+            : [incoming, ...prev]
+        ));
         setSnackbar({
-          id: parsed.notification.id,
-          title: parsed.notification.title,
-          message: parsed.notification.message,
+          id: incoming.id,
+          title: incoming.title,
+          message: incoming.message,
+          type: incoming.type,
+          zone_id: incoming.zone_id,
         });
+        playAlertSound(incoming.type || "info");
+        showDesktopNotification(incoming);
       } catch {
         // Ignore malformed websocket messages.
       }

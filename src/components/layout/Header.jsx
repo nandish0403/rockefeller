@@ -75,6 +75,12 @@ export default function Header() {
     }
   };
 
+  const snackbarSeverity = (type) => {
+    if (type === "alert") return "error";
+    if (type === "warning") return "warning";
+    return "info";
+  };
+
   return (
     <>
       <Box sx={{
@@ -208,21 +214,47 @@ export default function Header() {
 
       <Snackbar
         open={!!snackbar}
-        autoHideDuration={4000}
+        autoHideDuration={5500}
         onClose={() => setSnackbar(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{ mt: 7.5, mr: 1.5 }}
       >
         <Alert
-          severity="info"
+          severity={snackbarSeverity(snackbar?.type)}
           variant="filled"
           onClose={() => setSnackbar(null)}
           sx={{
-            bgcolor: isLight ? "#e3e9ec" : "#2a2a2a",
+            minWidth: 320,
+            borderRadius: "8px",
+            border: isLight
+              ? "1px solid rgba(171,179,183,0.45)"
+              : "1px solid rgba(91,64,62,0.25)",
+            boxShadow: isLight
+              ? "0 12px 24px rgba(43,52,55,0.14)"
+              : "0 16px 28px rgba(0,0,0,0.5)",
+            bgcolor: isLight ? "#ffffff" : "#252526",
             color: isLight ? "#2b3437" : "#e5e2e1",
+            "& .MuiAlert-icon": {
+              color: isLight ? "#2b3437" : "#ffb3ad",
+            },
+            "& .MuiAlert-action": {
+              color: isLight ? "#2b3437" : "#e4beba",
+            },
           }}
         >
-          <strong>{snackbar?.title}</strong>
-          {snackbar?.message ? ` - ${snackbar.message}` : ""}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
+            <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", fontWeight: 800, opacity: 0.75 }}>
+              ROCKEFELLER
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
+              {snackbar?.title}
+            </Typography>
+            {snackbar?.message && (
+              <Typography sx={{ fontSize: 11, opacity: 0.9 }}>
+                {snackbar.message}
+              </Typography>
+            )}
+          </Box>
         </Alert>
       </Snackbar>
     </>

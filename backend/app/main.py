@@ -23,6 +23,7 @@ from app.api.routes.presence      import router as presence_router
 from app.api.routes.history       import router as history_router
 from app.api.routes.users         import router as users_router
 from app.api.routes.predictions   import router as predictions_router
+from app.routers.groq_router import router as groq_router
 from app.services.ml_models import preload_models, district_model_count
 from app.services.crack_ai import preload_crack_model
 from app.services.forecast_runner import run_daily_risk_forecast
@@ -67,20 +68,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="GeoAlert API", version="2.0.0", lifespan=lifespan)
 
-cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
+def _normalize_origin(origin: str) -> str:
+    return origin.strip().rstrip("/")
+
+
+cors_origins = [
+    _normalize_origin(origin)
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+cors_origin_regex = settings.CORS_ORIGIN_REGEX.strip() or None
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-os.makedirs("uploads/reports",       exist_ok=True)
-os.makedirs("uploads/crack_reports", exist_ok=True)
+os.makedirs(os.path.join(settings.UPLOAD_DIR, "reports"), exist_ok=True)
+os.makedirs(os.path.join(settings.UPLOAD_DIR, "crack_reports"), exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 app.include_router(auth_router)
 app.include_router(zones_router)
@@ -100,6 +111,7 @@ app.include_router(presence_router)
 app.include_router(history_router)
 app.include_router(users_router)
 app.include_router(predictions_router)
+app.include_router(groq_router)
 
 
 @app.websocket("/ws/{user_id}")

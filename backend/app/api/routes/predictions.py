@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.zone import Zone
 from app.services.crack_ai import crack_model_status
 from app.services.ml_models import get_district_forecast
+from app.utils.helpers import normalize_probability_score
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 
@@ -22,7 +23,9 @@ def _risk_value(level: str | None) -> int:
 
 def _hazard_score(current_score: float, predicted_score: float) -> float:
     # Blend current and predicted risk with slight forward-looking emphasis.
-    blended = (0.4 * float(current_score or 0)) + (0.6 * float(predicted_score or 0))
+    current = normalize_probability_score(current_score)
+    predicted = normalize_probability_score(predicted_score)
+    blended = (0.4 * current) + (0.6 * predicted)
     return round(min(max(blended, 0.0), 1.0) * 100, 2)
 
 
@@ -83,10 +86,11 @@ async def _build_zone_row(zone: Zone, latest_prediction: RiskPrediction | None) 
     if not features_used:
         features_used = await get_zone_features(zone)
 
+    current_score = normalize_probability_score(zone.risk_score)
     predicted_score = (
-        float(latest_prediction.risk_score)
+        normalize_probability_score(latest_prediction.risk_score)
         if latest_prediction and latest_prediction.risk_score is not None
-        else float(zone.risk_score or 0)
+        else current_score
     )
     predicted_level = (
         str(latest_prediction.risk_level)
@@ -100,10 +104,10 @@ async def _build_zone_row(zone: Zone, latest_prediction: RiskPrediction | None) 
         "mine_name": zone.mine_name,
         "district": zone.district,
         "current_risk_level": str(zone.risk_level),
-        "current_risk_score": round(float(zone.risk_score or 0), 4),
+        "current_risk_score": round(current_score, 4),
         "predicted_risk_level": predicted_level,
         "predicted_risk_score": round(predicted_score, 4),
-        "hazard_score": _hazard_score(float(zone.risk_score or 0), predicted_score),
+        "hazard_score": _hazard_score(current_score, predicted_score),
         "forecast_rainfall_7d_mm": forecast_mm,
         "latest_blast_anomaly": bool(blast.is_anomaly) if blast else False,
         "model1_available": crack_model_status().get("model1_loaded", False),
@@ -149,10 +153,11 @@ async def _build_zone_row_fast(
     latest_blast: BlastEvent | None,
     model1_available: bool,
 ) -> dict[str, Any]:
+    current_score = normalize_probability_score(zone.risk_score)
     predicted_score = (
-        float(latest_prediction.risk_score)
+        normalize_probability_score(latest_prediction.risk_score)
         if latest_prediction and latest_prediction.risk_score is not None
-        else float(zone.risk_score or 0)
+        else current_score
     )
     predicted_level = (
         str(latest_prediction.risk_level)
@@ -168,10 +173,10 @@ async def _build_zone_row_fast(
         "mine_name": zone.mine_name,
         "district": zone.district,
         "current_risk_level": str(zone.risk_level),
-        "current_risk_score": round(float(zone.risk_score or 0), 4),
+        "current_risk_score": round(current_score, 4),
         "predicted_risk_level": predicted_level,
         "predicted_risk_score": round(predicted_score, 4),
-        "hazard_score": _hazard_score(float(zone.risk_score or 0), predicted_score),
+        "hazard_score": _hazard_score(current_score, predicted_score),
         "forecast_rainfall_7d_mm": forecast_mm,
         "latest_blast_anomaly": bool(latest_blast.is_anomaly) if latest_blast else False,
         "model1_available": model1_available,
@@ -253,12 +258,17 @@ async def predictions_summary(current_user: User = Depends(get_current_user)):
     for zone in zones:
         prediction = latest_by_zone.get(str(zone.id))
         level = str(prediction.risk_level) if prediction and prediction.risk_level else str(zone.risk_level)
-        score = float(prediction.risk_score) if prediction and prediction.risk_score is not None else float(zone.risk_score or 0)
+        score = (
+            normalize_probability_score(prediction.risk_score)
+            if prediction and prediction.risk_score is not None
+            else normalize_probability_score(zone.risk_score)
+        )
+        current_score = normalize_probability_score(zone.risk_score)
 
         if level in counts:
             counts[level] += 1
 
-        hazard_total += _hazard_score(float(zone.risk_score or 0), score)
+        hazard_total += _hazard_score(current_score, score)
 
         if prediction and prediction.predicted_at and prediction.predicted_at.date() == today:
             predicted_today += 1

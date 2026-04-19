@@ -1,4 +1,9 @@
 from pydantic_settings import BaseSettings
+from pathlib import Path
+
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE_PATH = BACKEND_ROOT / ".env"
 
 class Settings(BaseSettings):
     MONGODB_URL: str = "mongodb://localhost:27017"
@@ -9,6 +14,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     REDIS_URL: str = "redis://localhost:6379"
     CORS_ORIGINS: str = "http://localhost:5173,https://rockefeller-production.up.railway.app"
+    CORS_ORIGIN_REGEX: str = r"^https://([a-z0-9-]+\.)?vercel\.app$"
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.1-pro-preview"
     UPLOAD_DIR: str = "uploads"
@@ -34,7 +40,10 @@ class Settings(BaseSettings):
     MODEL_DOWNLOAD_TIMEOUT_SEC: int = 30
 
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE_PATH)
         extra = "ignore"
 
 settings = Settings()
+
+if not Path(settings.UPLOAD_DIR).is_absolute():
+    settings.UPLOAD_DIR = str((BACKEND_ROOT / settings.UPLOAD_DIR).resolve())

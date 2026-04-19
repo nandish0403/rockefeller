@@ -203,6 +203,7 @@ DATABASE_NAME=rockefeller
 SECRET_KEY=changeme
 ALGORITHM=HS256
 CORS_ORIGINS=http://localhost:5173,https://rockefeller-production.up.railway.app
+CORS_ORIGIN_REGEX=^https://([a-z0-9-]+\.)?vercel\.app$
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.1-pro-preview
 VAPID_PUBLIC_KEY=
@@ -219,6 +220,7 @@ Create root `.env` for deployed frontend API base URL:
 
 ```env
 VITE_API_URL=https://rockefeller-production.up.railway.app
+VITE_API_FALLBACK_URL=https://rockefeller-production.up.railway.app
 VITE_MAPTILER_KEY=your_maptiler_key
 ```
 
@@ -231,6 +233,16 @@ VITE_MAPTILER_KEY=your_maptiler_key
 
 Frontend API calls read this through `src/config/api.js`.
 Map view satellite + 3D terrain tiles read `VITE_MAPTILER_KEY`.
+
+Deployment note (Vercel + Railway):
+- Set `VITE_API_URL` in Vercel environment variables to your Railway backend HTTPS URL.
+- Set `CORS_ORIGINS` in Railway to include your exact Vercel production domain.
+- Keep `CORS_ORIGIN_REGEX` enabled for Vercel preview deployments.
+
+Example for this deployment:
+- Vercel frontend: `https://rockefeller-jade.vercel.app`
+- Railway backend: `https://rockefeller-production.up.railway.app`
+- Railway `CORS_ORIGINS`: `http://localhost:5173,https://rockefeller-production.up.railway.app,https://rockefeller-jade.vercel.app`
 
 ---
 

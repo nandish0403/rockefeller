@@ -50,17 +50,27 @@ export function useDashboardData() {
     red:    zones.filter(z => z.risk_level === "red").length,
   }), [zones]);
 
-  const recentAlerts = useMemo(() => alerts.slice(0, 8), [alerts]);
+  const sortedAlerts = useMemo(
+    () =>
+      [...alerts].sort((a, b) => {
+        const at = new Date(a?.created_at || 0).getTime();
+        const bt = new Date(b?.created_at || 0).getTime();
+        return bt - at;
+      }),
+    [alerts]
+  );
+
+  const recentAlerts = useMemo(() => sortedAlerts.slice(0, 8), [sortedAlerts]);
 
   const activityFeed = useMemo(() =>
-    alerts.slice(0, 6).map(a => ({
+    sortedAlerts.slice(0, 6).map(a => ({
       type:     "alert",
       title:    a.zone_name      ?? "Unknown Zone",
       subtitle: a.trigger_reason ?? "Risk alert triggered",
       user:     a.trigger_source ?? "System",
       time:     a.created_at     ?? null,
     })),
-  [alerts]);
+  [sortedAlerts]);
 
   const rainfallSummary = useMemo(() => {
     if (!weather.length) return null;

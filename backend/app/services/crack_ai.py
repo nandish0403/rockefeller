@@ -10,13 +10,6 @@ from app.core.config import settings
 _MODEL1_FILE = "model1_best_phase2.keras"
 _IMAGE_SIZE = (224, 224)
 _CLASS_NAMES = ["no_crack", "low", "moderate", "high", "critical"]
-_SEVERITY_SCORE_MAP = {
-    "no_crack": 0.0,
-    "low": 0.15,
-    "moderate": 0.40,
-    "high": 0.60,
-    "critical": 0.85,
-}
 _CRITICAL_THRESHOLD = 0.68
 
 _model: Any | None = None
@@ -186,8 +179,8 @@ def score_crack_image(image_bytes: bytes) -> dict[str, float | int | str]:
     idx = int(np.argmax(probs))
     ai_severity_class = _CLASS_NAMES[idx]
     confidence = float(probs[idx])
-    ai_risk_score = float(_SEVERITY_SCORE_MAP[ai_severity_class])
-    critical_crack_flag = 1 if ai_risk_score >= _CRITICAL_THRESHOLD else 0
+    ai_risk_score = confidence
+    critical_crack_flag = 1 if ai_severity_class == "critical" and ai_risk_score >= _CRITICAL_THRESHOLD else 0
 
     return {
         "ai_severity_class": ai_severity_class,

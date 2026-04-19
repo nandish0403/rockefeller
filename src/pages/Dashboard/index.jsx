@@ -25,6 +25,7 @@ import {
   fetchRedAlertInside,
 } from "../../api/presence";
 import { formatTimeAgo } from "../../utils/formatUtils";
+import { getZoneCoordinates } from "../../utils/zoneCoordinates";
 
 const UI = {
   surfaceLowest: "#0e0e0e",
@@ -456,10 +457,13 @@ export default function DashboardPage() {
                   url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   attribution="&copy; CartoDB"
                 />
-                {(zones || []).map((zone) => zone?.latlngs?.length > 0 ? (
+                {(zones || []).map((zone) => {
+                  const points = getZoneCoordinates(zone);
+                  if (points.length < 3) return null;
+                  return (
                   <Polygon
                     key={zone.id}
-                    positions={zone.latlngs}
+                    positions={points}
                     pathOptions={{
                       fillColor: RISK_COLORS[zone.risk_level] || UI.tertiaryContainer,
                       fillOpacity: 0.38,
@@ -474,7 +478,8 @@ export default function DashboardPage() {
                       </Box>
                     </Tooltip>
                   </Polygon>
-                ) : null)}
+                  );
+                })}
               </MapContainer>
             </Box>
           </Box>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../api/axios";
 import { fetchZones } from "../../api/zones";
+import { toMediaUrl } from "@/utils/mediaUrl";
 
 // ── constants ──────────────────────────────────────────────────
 const SEV_CFG = {
@@ -245,7 +246,7 @@ function AdminReportCard({ report: r, idx, onAction, actioning, onView }) {
       {/* Photo */}
       <div style={{ height: 180, position: "relative", overflow: "hidden", flexShrink: 0, background: "#1c1b1b" }}>
         {r.photo_url && !imgErr ? (
-          <img src={r.photo_url} alt="crack" onError={() => setImgErr(true)}
+          <img src={toMediaUrl(r.photo_url)} alt="crack" onError={() => setImgErr(true)}
             style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }}
             onMouseEnter={e => e.target.style.transform = "scale(1.06)"}
             onMouseLeave={e => e.target.style.transform = "scale(1)"} />

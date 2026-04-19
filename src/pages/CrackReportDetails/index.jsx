@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import { toMediaUrl } from "@/utils/mediaUrl";
 
 function toPct(value) {
   if (value == null) return "-";
@@ -57,7 +58,12 @@ export default function CrackReportDetailsPage() {
     try {
       if (action === "notify") {
         const { data } = await api.patch(`/api/crack-reports/${report.id}/notify-critical`);
-        setStatusMsg(`Critical notification sent to ${data?.notified_users ?? 0} workers.`);
+        const notified = Number(data?.notified_users ?? 0);
+        if (notified > 0) {
+          setStatusMsg(`Critical notification sent to ${notified} users.`);
+        } else {
+          setStatusErr("No recipients were found for this critical alert. Check worker zone or district mapping.");
+        }
       } else if (action === "verify") {
         const { data } = await api.patch(`/api/crack-reports/${report.id}/verify`);
         setStatusMsg(`Verified and notified ${data?.notified_users ?? 0} workers.`);
@@ -114,7 +120,7 @@ export default function CrackReportDetailsPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr" }}>
           <div style={{ minHeight: 300, background: "#1a1a1a" }}>
             {report.photo_url ? (
-              <img src={report.photo_url} alt="crack" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={toMediaUrl(report.photo_url)} alt="crack" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               <div style={{ color: "#9f9a99", padding: 24 }}>No image available</div>
             )}
@@ -153,7 +159,7 @@ export default function CrackReportDetailsPage() {
                   cursor: busy ? "wait" : "pointer",
                 }}
               >
-                Notify Critical
+                Notify Critical Users
               </button>
             )}
 

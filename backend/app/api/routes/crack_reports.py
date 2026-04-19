@@ -80,6 +80,62 @@ async def _legacy_zone_code_for(zone: Zone) -> Optional[str]:
     return None
 
 
+def _norm(value: Optional[str]) -> str:
+    return str(value or "").strip().lower()
+
+
+def _match_worker_zone_refs(worker: User, refs: set[str]) -> bool:
+    return _norm(worker.zone_assigned) in refs
+
+
+async def _target_workers_for_zone(zone: Zone, report: Optional[CrackReport] = None) -> list[User]:
+    legacy_zone_code = await _legacy_zone_code_for(zone)
+    raw_refs = [str(zone.id), zone.name, legacy_zone_code]
+
+    if report:
+        raw_refs.extend([report.zone_id, report.zone_name])
+
+    zone_refs = {_norm(ref) for ref in raw_refs if ref}
+    workers = await User.find(User.role == "field_worker").to_list()
+
+    matched = [worker for worker in workers if _match_worker_zone_refs(worker, zone_refs)]
+    if matched:
+        return matched
+
+    # Fallback: if zone refs do not match due legacy assignment format,
+    # notify workers from the same district so critical alerts are not dropped.
+    district_key = _norm(zone.district)
+    district_workers = [worker for worker in workers if _norm(worker.district) == district_key]
+    if district_workers:
+        return district_workers
+
+    # Final fallback for critical alerts in partially configured environments.
+    return workers
+
+
+async def _target_engineers_for_zone(zone: Zone, report: Optional[CrackReport] = None) -> list[User]:
+    legacy_zone_code = await _legacy_zone_code_for(zone)
+    raw_refs = [str(zone.id), zone.name, legacy_zone_code]
+
+    if report:
+        raw_refs.extend([report.zone_id, report.zone_name])
+
+    zone_refs = {_norm(ref) for ref in raw_refs if ref}
+    district_key = _norm(zone.district)
+
+    officers = await User.find(User.role == "safety_officer").to_list()
+    matched = [
+        officer
+        for officer in officers
+        if _match_worker_zone_refs(officer, zone_refs) or _norm(officer.district) == district_key
+    ]
+    if matched:
+        return matched
+
+    # Fallback so at least an admin receives engineer-check instructions.
+    return await User.find(User.role == "admin").to_list()
+
+
 async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> dict:
     zone = await _resolve_zone(report.zone_id, report.zone_name)
     if not zone:
@@ -103,24 +159,37 @@ async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> 
     )
     await alert.insert()
 
-    legacy_zone_code = await _legacy_zone_code_for(zone)
-    worker_zone_refs = {
-        ref
-        for ref in (str(zone.id), zone.name, report.zone_id, report.zone_name, legacy_zone_code)
-        if ref
-    }
-    candidate_workers = await User.find(User.role == "field_worker").to_list()
-    workers = [w for w in candidate_workers if w.zone_assigned in worker_zone_refs]
+    workers = await _target_workers_for_zone(zone, report)
+    engineers = await _target_engineers_for_zone(zone, report)
 
     worker_ids = [str(worker.id) for worker in workers]
+    engineer_ids = [str(engineer.id) for engineer in engineers]
+
     if worker_ids:
         await create_notifications_for_users(
             worker_ids,
-            title="Crack Report Verified",
-            message=f"{zone.name}: verified crack report triggered a new alert.",
+            title="Unsafe Area Advisory",
+            message=(
+                f"{zone.name} is not safe due to a verified crack condition. "
+                "Evacuate workers from the nearby area immediately and move to the designated safety zone."
+            ),
             zone_id=str(zone.id),
             zone_name=zone.name,
             notif_type=NotificationType.alert,
+            send_push=True,
+        )
+
+    if engineer_ids:
+        await create_notifications_for_users(
+            engineer_ids,
+            title="Field Engineer Inspection Required",
+            message=(
+                f"Urgent crack inspection required in {zone.name}. "
+                "Area is unsafe; verify crack progression and secure the slope before work resumes."
+            ),
+            zone_id=str(zone.id),
+            zone_name=zone.name,
+            notif_type=NotificationType.warning,
             send_push=True,
         )
 
@@ -135,6 +204,7 @@ async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> 
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
         },
         "notified_users": len(worker_ids),
+        "notified_engineers": len(engineer_ids),
     }
 
 # Map free-text crack type to valid CrackType enum values
@@ -463,7 +533,7 @@ async def reject_crack_report(
 @router.patch("/{report_id}/notify-critical")
 async def notify_critical_crack_report(
     report_id: str,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_officer),
 ):
     report = await _get_report_or_error(report_id)
 
@@ -474,24 +544,18 @@ async def notify_critical_crack_report(
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
 
-    legacy_zone_code = await _legacy_zone_code_for(zone)
-    worker_zone_refs = {
-        ref
-        for ref in (str(zone.id), zone.name, report.zone_id, report.zone_name, legacy_zone_code)
-        if ref
-    }
-
-    candidate_workers = await User.find(User.role == "field_worker").to_list()
-    workers = [w for w in candidate_workers if w.zone_assigned in worker_zone_refs]
+    workers = await _target_workers_for_zone(zone, report)
+    engineers = await _target_engineers_for_zone(zone, report)
     worker_ids = [str(worker.id) for worker in workers]
+    engineer_ids = [str(engineer.id) for engineer in engineers]
 
     if worker_ids:
         await create_notifications_for_users(
             worker_ids,
-            title="Critical Crack Warning",
+            title="Critical Crack Warning - Evacuate",
             message=(
-                f"{zone.name}: critical crack condition detected. "
-                "Move to safety zone and wait for further instructions."
+                f"{zone.name} is unsafe due to critical crack activity. "
+                "Evacuate the surrounding work area now and wait at the safety point until clearance is issued."
             ),
             zone_id=str(zone.id),
             zone_name=zone.name,
@@ -499,8 +563,23 @@ async def notify_critical_crack_report(
             send_push=True,
         )
 
+    if engineer_ids:
+        await create_notifications_for_users(
+            engineer_ids,
+            title="Critical Crack Inspection Required",
+            message=(
+                f"Immediate field engineer response needed in {zone.name}. "
+                "Inspect crack severity, validate evacuation perimeter, and submit a safety clearance update."
+            ),
+            zone_id=str(zone.id),
+            zone_name=zone.name,
+            notif_type=NotificationType.warning,
+            send_push=True,
+        )
+
     return {
         "report": crack_to_dict(report),
         "notified_users": len(worker_ids),
+        "notified_engineers": len(engineer_ids),
         "zone_name": zone.name,
     }

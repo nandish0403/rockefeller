@@ -138,16 +138,22 @@ export default function AlertsPage() {
   // ── Filtering ─────────────────────────────────────────────
   const districts = ["All", ...new Set(alerts.map(a => a.district).filter(Boolean))];
 
-  const visible = alerts.filter(a => {
-    const q = search.toLowerCase();
-    const matchSearch = !search
-      || a.zone_name?.toLowerCase().includes(q)
-      || a.trigger_reason?.toLowerCase().includes(q)
-      || a.district?.toLowerCase().includes(q);
-    const matchDist = distFilter === "All" || a.district === distFilter;
-    const matchRisk = riskFilter === "All" || a.risk_level === riskFilter.toLowerCase();
-    return matchSearch && matchDist && matchRisk;
-  });
+  const visible = alerts
+    .filter(a => {
+      const q = search.toLowerCase();
+      const matchSearch = !search
+        || a.zone_name?.toLowerCase().includes(q)
+        || a.trigger_reason?.toLowerCase().includes(q)
+        || a.district?.toLowerCase().includes(q);
+      const matchDist = distFilter === "All" || a.district === distFilter;
+      const matchRisk = riskFilter === "All" || a.risk_level === riskFilter.toLowerCase();
+      return matchSearch && matchDist && matchRisk;
+    })
+    .sort((a, b) => {
+      const at = new Date(a?.created_at || 0).getTime();
+      const bt = new Date(b?.created_at || 0).getTime();
+      return bt - at;
+    });
 
   const counts = TABS.reduce((acc, t) => {
     acc[t] = alerts.filter(a => a.status === t).length;

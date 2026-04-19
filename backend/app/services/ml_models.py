@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import pickle
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,10 @@ from datetime import datetime, timedelta
 import numpy as np
 from app.core.config import settings
 from app.models.blast_event import BlastEvent
+from app.utils.helpers import get_monsoon_flag, normalize_zone_features
+
+
+logger = logging.getLogger(__name__)
 
 FEATURES = [
     "blast_count_7d",
@@ -170,6 +175,7 @@ async def predict_zone_risk(
     days_since_inspection: int,
     is_monsoon: int,
     zone_id: str | None = None,
+    zone_name: str | None = None,
 ) -> dict[str, float | str]:
     if "m2" not in _models:
         preload_models()
@@ -179,26 +185,43 @@ async def predict_zone_risk(
         blast_count_7d = live_count
         avg_blast_intensity = live_avg
 
-    features = np.array(
-        [[
-            blast_count_7d,
-            avg_blast_intensity,
-            rainfall_mm_24h,
-            rainfall_mm_7d,
-            crack_count_7d,
-            avg_crack_score,
-            critical_crack_flag,
-            elevation_m,
-            area_sq_km,
-            days_since_inspection,
-            is_monsoon,
-        ]]
-    )
+    features = {
+        "rainfall_mm_24h": float(rainfall_mm_24h or 0),
+        "rainfall_mm_7d": float(rainfall_mm_7d or 0),
+        "blast_count_7d": int(blast_count_7d or 0),
+        "avg_blast_intensity": float(avg_blast_intensity or 0),
+        "crack_count_7d": int(crack_count_7d or 0),
+        "avg_crack_score": float(avg_crack_score or 0.0),
+        "critical_crack_flag": int(critical_crack_flag or 0),
+        "days_since_inspection": int(days_since_inspection or 0),
+        "is_monsoon": get_monsoon_flag(),
+        "elevation_m": float(elevation_m or 100),
+        "area_sq_km": float(area_sq_km or 1.0),
+    }
+    normalized = normalize_zone_features(features)
 
-    scaled = _models["m2_scaler"].transform(features)
-    proba = _models["m2"].predict_proba(scaled)[0]
+    zone_ref = zone_name or zone_id or "unknown"
+    logger.debug(f"Zone {zone_ref} features before prediction: {features}")
+    logger.debug(f"Zone {zone_ref} normalized input: {normalized}")
+
+    proba = _models["m2"].predict_proba(normalized)[0]
+    class_idx = int(np.argmax(proba))
+
+    risk_label = _score_to_label(float(np.max(proba)))
+    if "m2_encoder" in _models:
+        try:
+            risk_label = str(_models["m2_encoder"].inverse_transform([class_idx])[0])
+        except Exception:
+            pass
+
     risk_score = float(np.max(proba))
-    risk_label = _score_to_label(risk_score)
+    if "m2_encoder" in _models:
+        try:
+            classes = [str(value) for value in _models["m2_encoder"].classes_]
+            if "red" in classes:
+                risk_score = float(proba[classes.index("red")])
+        except Exception:
+            pass
 
     return {
         "risk_label": risk_label,

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
-from app.core.config import settings
+from dotenv import load_dotenv
+from groq import Groq
+
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(BACKEND_ROOT / ".env")
+
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 
 def _fallback_draft(payload: dict[str, Any]) -> dict[str, Any]:
@@ -35,17 +43,36 @@ def _fallback_draft(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def generate_report_draft(payload: dict[str, Any]) -> dict[str, Any]:
-    if not settings.GEMINI_API_KEY:
-        draft = _fallback_draft(payload)
-        draft["note"] = "Gemini API key not configured. Returned fallback draft."
-        return draft
+def _extract_json_dict(text: str) -> dict[str, Any]:
+    cleaned = (text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:].strip()
 
-    model = settings.GEMINI_MODEL or "gemini-1.5-flash"
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        f"?key={settings.GEMINI_API_KEY}"
-    )
+    try:
+        parsed = json.loads(cleaned)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        pass
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            parsed = json.loads(cleaned[start : end + 1])
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+
+    return {}
+
+
+def generate_report_draft(payload: dict[str, Any]) -> dict[str, Any]:
+    if groq_client is None:
+        draft = _fallback_draft(payload)
+        draft["note"] = "GROQ_API_KEY is not configured. Returned fallback draft."
+        return draft
 
     prompt = (
         "You generate concise mine safety field reports in JSON only. "
@@ -54,50 +81,27 @@ def generate_report_draft(payload: dict[str, Any]) -> dict[str, Any]:
         f"Input payload: {json.dumps(payload, ensure_ascii=True)}"
     )
 
-    body = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt}
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.3,
-            "maxOutputTokens": 400,
-            "responseMimeType": "application/json",
-        },
-    }
-
-    request = Request(
-        url=url,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
     try:
-        with urlopen(request, timeout=20) as response:
-            raw = response.read().decode("utf-8")
-    except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="ignore") if hasattr(exc, "read") else str(exc)
-        raise RuntimeError(f"Gemini HTTP error: {exc.code} {detail[:200]}")
-    except URLError as exc:
-        raise RuntimeError(f"Gemini connection error: {exc}")
-    except Exception as exc:
-        raise RuntimeError(f"Gemini request failed: {exc}")
-
-    try:
-        parsed = json.loads(raw)
-        text = (
-            parsed.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            temperature=0.3,
+            max_tokens=400,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You generate strict JSON output for mine safety field reports.",
+                },
+                {"role": "user", "content": prompt},
+            ],
         )
-        draft = json.loads(text)
     except Exception as exc:
-        raise RuntimeError(f"Gemini response parse failed: {exc}")
+        raise RuntimeError(f"Groq request failed: {exc}")
+
+    try:
+        text = response.choices[0].message.content or ""
+        draft = _extract_json_dict(text)
+    except Exception as exc:
+        raise RuntimeError(f"Groq response parse failed: {exc}")
 
     fallback = _fallback_draft(payload)
     result = {
@@ -106,7 +110,7 @@ def generate_report_draft(payload: dict[str, Any]) -> dict[str, Any]:
         "observations": str(draft.get("observations") or fallback["observations"]),
         "remarks": str(draft.get("remarks") or fallback["remarks"]),
         "severity": str(draft.get("severity") or fallback["severity"]).lower(),
-        "source": "gemini",
+        "source": "groq",
     }
 
     if result["severity"] not in {"low", "medium", "high", "critical"}:

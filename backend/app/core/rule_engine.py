@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 from app.models.zone import Zone
 from app.models.alert import Alert
 from app.models.blast_event import BlastEvent
@@ -6,6 +7,10 @@ from app.models.crack_report import CrackReport
 from app.models.weather_record import WeatherRecord
 from app.models.history import HistoricalLandslide
 from app.services.ml_models import predict_zone_risk
+from app.utils.helpers import get_monsoon_flag, normalize_zone_features, normalize_probability_score
+
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Simple weighted-sum risk formula (used as fallback when ML model unavailable)
@@ -33,8 +38,8 @@ def _normalize_slope(slope_deg: float) -> float:
 def _soil_factor(soil_type: str | None) -> float:
     """Return soil instability factor in [0, 1]."""
     if not soil_type:
-        return 0.5
-    return _SOIL_RISK.get(soil_type.lower(), 0.5)
+        return 0.0
+    return _SOIL_RISK.get(soil_type.lower(), 0.0)
 
 def _normalize_blast_activity(blast_count_7d: int) -> float:
     """Map weekly blast count to a 0–1 score."""
@@ -57,6 +62,11 @@ def simple_risk_score(
     Returns a dict with ``risk_score`` (float, 0–1) and ``risk_level``
     (``"green"``, ``"yellow"``, or ``"red"``).
     """
+    rainfall_mm = float(rainfall_mm or 0.0)
+    slope_deg = float(slope_deg or 0.0)
+    blast_count_7d = int(blast_count_7d or 0)
+    historical_landslides = int(historical_landslides or 0)
+
     score = (
         0.40 * _normalize_rainfall(rainfall_mm)
         + 0.20 * _normalize_slope(slope_deg)
@@ -102,8 +112,7 @@ async def get_zone_features(zone: Zone) -> dict:
     rain_7d        = sum(w.rainfall_mm for w in weather[:7])
 
     # Zone static features
-    days_since = (datetime.utcnow() - zone.last_updated).days if zone.last_updated else 30
-    month_now = datetime.utcnow().month
+    days_since = (datetime.utcnow() - zone.last_updated).days if zone.last_updated else 0
 
     return {
         "blast_count_7d":       blast_count,
@@ -113,10 +122,10 @@ async def get_zone_features(zone: Zone) -> dict:
         "crack_count_7d":       crack_count,
         "avg_crack_score":      round(avg_crack, 3),
         "critical_crack_flag":  critical_flag,
-        "elevation_m":          zone.elevation_m or 300,
-        "area_sq_km":           zone.area_sq_km or 100,
+        "elevation_m":          zone.elevation_m or 100,
+        "area_sq_km":           zone.area_sq_km or 1.0,
         "days_since_inspection":days_since,
-        "is_monsoon":           1 if month_now in [6, 7, 8, 9] else 0,
+        "is_monsoon":           get_monsoon_flag(),
     }
 
 
@@ -171,9 +180,11 @@ async def run_zone_risk_update(zone_id: str):
     features  = await _get_zone_features(zone)
 
     try:
-        result = await predict_zone_risk(zone_id=str(zone.id), **features)
+        logger.debug(f"Zone {zone.name} features before prediction: {features}")
+        logger.debug(f"Zone {zone.name} normalized input: {normalize_zone_features(features)}")
+        result = await predict_zone_risk(zone_id=str(zone.id), zone_name=zone.name, **features)
         new_level = str(result["risk_label"])
-        new_score = float(result["risk_score"])
+        new_score = normalize_probability_score(result["risk_score"])
     except Exception as e:
         print(f"[RuleEngine] ML model unavailable ({e}), using simple risk formula.")
         landslide_count = await HistoricalLandslide.find(
@@ -187,7 +198,7 @@ async def run_zone_risk_update(zone_id: str):
             historical_landslides=landslide_count,
         )
         new_level = fallback["risk_level"]
-        new_score = fallback["risk_score"]
+        new_score = normalize_probability_score(fallback["risk_score"])
         # Promote "yellow" to "orange" when a critical crack is flagged
         if new_level == "yellow" and features["critical_crack_flag"]:
             new_level, new_score = "orange", max(new_score, 0.48)

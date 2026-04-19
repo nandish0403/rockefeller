@@ -9,6 +9,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { fetchZones } from "../../api/zones";
 import { fetchAlerts } from "../../api/alerts";
 import { fetchHistoricalEvents } from "../../api/history";
+import { getZoneCoordinates } from "../../utils/zoneCoordinates";
 
 // ── Risk colours ───────────────────────────────────────────────
 const RISK = {
@@ -21,8 +22,6 @@ const RISK = {
 const ZOOM_3D_THRESHOLD = 11.5;
 const PITCH_3D = 50;
 const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || "";
-
-const getZoneCoordinates = (zone) => zone?.latlngs || zone?.coordinates || [];
 
 const toRingLngLat = (zone) => {
   const points = getZoneCoordinates(zone);

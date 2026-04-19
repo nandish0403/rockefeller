@@ -8,8 +8,32 @@ from app.models.user import User
 from app.models.history import HistoricalLandslide
 from app.core.rule_engine import get_zone_features, simple_risk_score
 from app.services.ml_models import get_tomorrow_rainfall, predict_zone_risk
+from app.utils.helpers import normalize_probability_score
 
 router = APIRouter(prefix="/api/zones", tags=["zones"])
+
+
+def _normalize_latlngs(points) -> list[list[float]]:
+    normalized: list[list[float]] = []
+    if not isinstance(points, list):
+        return normalized
+
+    for point in points:
+        lat = lng = None
+        if isinstance(point, list) and len(point) >= 2:
+            lat, lng = point[0], point[1]
+        elif isinstance(point, dict):
+            lat = point.get("lat", point.get("latitude"))
+            lng = point.get("lng", point.get("lon", point.get("longitude")))
+
+        try:
+            lat_f = float(lat)
+            lng_f = float(lng)
+            normalized.append([lat_f, lng_f])
+        except (TypeError, ValueError):
+            continue
+
+    return normalized
 
 def zone_to_dict(z: Zone) -> dict:
     return {
@@ -18,8 +42,8 @@ def zone_to_dict(z: Zone) -> dict:
         "mine_name": z.mine_name,
         "district": z.district,
         "risk_level": z.risk_level,
-        "risk_score": z.risk_score,
-        "latlngs": z.latlngs,
+        "risk_score": normalize_probability_score(z.risk_score),
+        "latlngs": _normalize_latlngs(z.latlngs),
         "soil_type": z.soil_type,
         "slope_angle": z.slope_angle,
         "elevation_m": z.elevation_m,
@@ -79,7 +103,8 @@ async def get_zone_forecast(
         "rainfall_mm_24h": tomorrow_rain,
         "rainfall_mm_7d": round(tomorrow_rain * 3, 2),
     }
-    prediction = await predict_zone_risk(zone_id=str(zone.id), **forecast_features)
+    prediction = await predict_zone_risk(zone_id=str(zone.id), zone_name=zone.name, **forecast_features)
+    predicted_score = normalize_probability_score(prediction["risk_score"])
 
     return {
         "zone_id": str(zone.id),
@@ -88,7 +113,7 @@ async def get_zone_forecast(
         "prediction_horizon": "tomorrow",
         "predicted_rainfall_mm_24h": tomorrow_rain,
         "predicted_risk_label": prediction["risk_label"],
-        "predicted_risk_score": prediction["risk_score"],
+        "predicted_risk_score": predicted_score,
         "features_used": forecast_features,
     }
 
@@ -159,7 +184,7 @@ async def get_risk_levels(
             "mine_name": z.mine_name,
             "district": z.district,
             "risk_level": level,
-            "risk_score": z.risk_score,
+            "risk_score": normalize_probability_score(z.risk_score),
             "simple_risk_score": fallback["risk_score"],
             "simple_risk_level": fallback["risk_level"],
             "last_updated": z.last_updated.isoformat() if z.last_updated else None,

@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:logger/logger.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'backend_endpoints.dart';
 import '../storage/secure_storage.dart';
-
-const String _wsBaseUrl = 'wss://rockefeller-production.up.railway.app';
 
 final _log = Logger(printer: PrettyPrinter(methodCount: 0, noBoxingByDefault: true));
 
@@ -33,8 +32,8 @@ class WsEvent {
       _ => WsEventType.unknown,
     };
 
-    // Backend may wrap payload inside keys like `notification` or `data`.
-    final wrapped = json['notification'] ?? json['data'];
+    // Backend may wrap payload inside keys like `notification`, `payload`, or `data`.
+    final wrapped = json['notification'] ?? json['payload'] ?? json['data'];
     final payload = wrapped is Map<String, dynamic> ? wrapped : json;
 
     return WsEvent(type: type, data: payload);
@@ -48,6 +47,7 @@ class WebSocketService {
   bool _isConnected = false;
   int _retryCount = 0;
   Timer? _retryTimer;
+  Timer? _heartbeatTimer;
 
   Stream<WsEvent> get events {
     _controller ??= StreamController<WsEvent>.broadcast();
@@ -66,7 +66,7 @@ class WebSocketService {
       final token = await SecureStorage.readToken();
       if (token == null || _userId == null) return;
 
-      final uri = Uri.parse('$_wsBaseUrl/ws/$_userId?token=$token');
+      final uri = buildUserWsUri(userId: _userId!, token: token);
       _channel = WebSocketChannel.connect(uri);
 
       _channel!.stream.listen(
@@ -82,16 +82,19 @@ class WebSocketService {
         onError: (error) {
           _log.e('WS error: $error');
           _isConnected = false;
+          _heartbeatTimer?.cancel();
           _scheduleReconnect();
         },
         onDone: () {
           _log.w('WS connection closed');
           _isConnected = false;
+          _heartbeatTimer?.cancel();
           _scheduleReconnect();
         },
       );
 
       _isConnected = true;
+      _startHeartbeat();
       _log.d('WS connected for user $_userId');
     } catch (e) {
       _log.e('WS connect failed: $e');
@@ -101,12 +104,25 @@ class WebSocketService {
   }
 
   void _scheduleReconnect() {
+    if (_userId == null) return;
     _retryTimer?.cancel();
     final delay = Duration(seconds: _exponentialBackoff(_retryCount));
     _log.d('WS reconnecting in ${delay.inSeconds}s (attempt ${_retryCount + 1})');
     _retryTimer = Timer(delay, () {
       _retryCount++;
       _connect();
+    });
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!_isConnected || _channel == null) return;
+      try {
+        _channel!.sink.add('ping');
+      } catch (_) {
+        _isConnected = false;
+      }
     });
   }
 
@@ -117,6 +133,7 @@ class WebSocketService {
 
   void disconnect() {
     _retryTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _channel?.sink.close();
     _isConnected = false;
     _log.d('WS disconnected');

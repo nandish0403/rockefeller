@@ -81,25 +81,109 @@ class _EmergencyBroadcastListenerState
   void _showNotificationBanner(Map<String, dynamic> data) {
     final title = data['title']?.toString() ?? 'New notification';
     final message = data['message']?.toString();
-    ScaffoldMessenger.of(context).showSnackBar(
+    final type = data['type']?.toString().toLowerCase() ?? 'info';
+    final accent = switch (type) {
+      'alert' => AppTheme.errorRedHud,
+      'warning' => AppTheme.amberWarning,
+      _ => AppTheme.primary,
+    };
+    final sender = switch (type) {
+      'alert' => 'Sentinel Emergency',
+      'warning' => 'Sentinel Warning',
+      _ => 'Sentinel Ops',
+    };
+    final text = (message == null || message.isEmpty) ? title : message;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
-        backgroundColor: AppTheme.surfaceContainerHigh,
-        content: Row(
-          children: [
-            const Icon(Icons.notifications, color: AppTheme.primary, size: 16),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                message == null || message.isEmpty ? title : '$title: $message',
-                style: const TextStyle(color: AppTheme.onSurface, fontSize: 13),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        padding: EdgeInsets.zero,
+        content: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent.withValues(alpha: 0.58)),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.2),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () {
+              messenger.hideCurrentSnackBar();
+              if (mounted) {
+                context.go('/notifications');
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: accent.withValues(alpha: 0.18),
+                    child: Icon(Icons.notifications_active_rounded, size: 16, color: accent),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          sender,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: accent,
+                            fontFamily: 'SpaceGrotesk',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.onSurface,
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          text,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppTheme.onSurfaceVariant,
+                            fontFamily: 'Inter',
+                            fontSize: 11.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.onSurfaceVariant),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-        duration: const Duration(seconds: 3),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        duration: const Duration(seconds: 5),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(12),
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       ),
     );
   }

@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
+import 'backend_endpoints.dart';
 import '../storage/secure_storage.dart';
 import '../error/app_exception.dart';
-
-const String _baseUrl = 'https://rockefeller-production.up.railway.app';
 
 final _log = Logger(printer: PrettyPrinter(methodCount: 0, noBoxingByDefault: true));
 
@@ -12,7 +11,7 @@ class ApiClient {
 
   ApiClient({String? baseUrl}) {
     _dio = Dio(BaseOptions(
-      baseUrl: baseUrl ?? _baseUrl,
+      baseUrl: baseUrl ?? apiBaseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},

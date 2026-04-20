@@ -1,3 +1,5 @@
+import '../network/backend_endpoints.dart';
+
 // ── User / Auth Models ──────────────────────────────────────────────────
 
 enum UserRole { admin, safetyOfficer, fieldWorker, unknown }
@@ -601,17 +603,8 @@ CrackReportStatus crackStatusFromString(String? s) => switch (s?.toLowerCase()) 
   _          => CrackReportStatus.pending,
 };
 
-const _backendBaseUrl = 'https://rockefeller-production.up.railway.app';
-
 String _normalizeBackendMediaUrl(String raw) {
-  final value = raw.trim();
-  if (value.isEmpty) return value;
-
-  final uri = Uri.tryParse(value);
-  if (uri != null && uri.hasScheme) return value;
-  if (value.startsWith('//')) return 'https:$value';
-  if (value.startsWith('/')) return '$_backendBaseUrl$value';
-  return '$_backendBaseUrl/$value';
+  return resolveBackendMediaUrl(raw);
 }
 
 void _collectMediaUrls(dynamic value, Set<String> out) {

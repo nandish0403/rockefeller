@@ -2,11 +2,33 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import Optional
 from datetime import datetime
 from app.models.alert import Alert
+from app.models.notification import NotificationType
 from app.schemas.alert import CreateAlertRequest
 from app.api.dependencies import get_current_user, require_officer, require_admin
 from app.models.user import User
+from app.services.notification_service import create_notifications_for_users
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
+
+
+def _target_refs(zone_id: str | None, zone_name: str | None) -> set[str]:
+    return {ref for ref in [zone_id, zone_name] if ref}
+
+
+async def _target_user_ids(zone_id: str | None, zone_name: str | None) -> list[str]:
+    refs = _target_refs(zone_id, zone_name)
+    users = await User.find().to_list()
+
+    ids: list[str] = []
+    for user in users:
+        if user.role in ["admin", "safety_officer"]:
+            ids.append(str(user.id))
+            continue
+        if refs and user.zone_assigned in refs:
+            ids.append(str(user.id))
+
+    # Preserve order while removing duplicates.
+    return list(dict.fromkeys(ids))
 
 def alert_to_dict(a: Alert) -> dict:
     return {
@@ -76,6 +98,19 @@ async def create_alert(
         created_at=datetime.utcnow(),
     )
     await alert.insert()
+
+    recipients = await _target_user_ids(alert.zone_id, alert.zone_name)
+    if recipients:
+        await create_notifications_for_users(
+            recipients,
+            title="New Alert",
+            message=f"{alert.zone_name}: {alert.trigger_reason}",
+            zone_id=alert.zone_id,
+            zone_name=alert.zone_name,
+            notif_type=NotificationType.alert,
+            send_push=True,
+        )
+
     return alert_to_dict(alert)
 
 # 🔒 Only safety_officer / admin can acknowledge
@@ -91,6 +126,19 @@ async def acknowledge_alert(
     alert.acknowledged_by = current_user.name
     alert.acknowledged_at = datetime.utcnow()
     await alert.save()
+
+    recipients = await _target_user_ids(alert.zone_id, alert.zone_name)
+    if recipients:
+        await create_notifications_for_users(
+            recipients,
+            title="Alert Acknowledged",
+            message=f"{alert.zone_name}: acknowledged by {current_user.name}.",
+            zone_id=alert.zone_id,
+            zone_name=alert.zone_name,
+            notif_type=NotificationType.info,
+            send_push=True,
+        )
+
     return alert_to_dict(alert)
 
 # 🔒 Only admin can resolve
@@ -106,4 +154,17 @@ async def resolve_alert(
     alert.resolved_by = current_user.name
     alert.resolved_at = datetime.utcnow()
     await alert.save()
+
+    recipients = await _target_user_ids(alert.zone_id, alert.zone_name)
+    if recipients:
+        await create_notifications_for_users(
+            recipients,
+            title="Alert Resolved",
+            message=f"{alert.zone_name}: resolved by {current_user.name}.",
+            zone_id=alert.zone_id,
+            zone_name=alert.zone_name,
+            notif_type=NotificationType.info,
+            send_push=True,
+        )
+
     return alert_to_dict(alert)

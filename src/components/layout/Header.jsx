@@ -1,5 +1,5 @@
 import {
-  Alert,
+  Avatar,
   Badge,
   Box,
   Button,
@@ -60,9 +60,9 @@ export default function Header() {
   const [parent, current] = dynamicLabel || LABELS[pathname] || ["Command Center", "Dashboard"];
 
   const iconByType = (type) => {
-    if (type === "alert") return { icon: "priority_high", color: "#ff5451" };
-    if (type === "warning") return { icon: "warning", color: "#ffb95f" };
-    return { icon: "info", color: "#64b5f6" };
+    if (type === "alert") return { icon: "priority_high", color: "#ff5451", bubble: "#3a1817" };
+    if (type === "warning") return { icon: "warning", color: "#ffb95f", bubble: "#3a2a12" };
+    return { icon: "chat", color: "#4edea3", bubble: "#17382f" };
   };
 
   const handleNotificationClick = async (row) => {
@@ -79,6 +79,17 @@ export default function Header() {
     if (type === "alert") return "error";
     if (type === "warning") return "warning";
     return "info";
+  };
+
+  const openFromSnackbar = async () => {
+    if (!snackbar) return;
+    if (snackbar.id) {
+      await markRead(snackbar.id);
+    }
+    setSnackbar(null);
+    if (snackbar.zone_id) {
+      navigate(`/zones/${snackbar.zone_id}`);
+    }
   };
 
   return (
@@ -138,14 +149,21 @@ export default function Header() {
         onClose={closeDrawer}
         PaperProps={{
           sx: {
-            width: 380,
+            width: 390,
             bgcolor: theme.palette.background.paper,
             borderLeft: `1px solid ${theme.palette.divider}`,
           },
         }}
       >
         <Box sx={{ px: 2.2, py: 1.8, borderBottom: `1px solid ${theme.palette.divider}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography sx={{ fontSize: 15, fontWeight: 700, color: theme.palette.text.primary }}>Notifications</Typography>
+          <Box>
+            <Typography sx={{ fontSize: 15, fontWeight: 800, color: theme.palette.text.primary }}>
+              Notifications
+            </Typography>
+            <Typography sx={{ fontSize: 10.5, color: theme.palette.text.secondary, mt: 0.2 }}>
+              WhatsApp-style incident feed
+            </Typography>
+          </Box>
           <Button
             onClick={markAllRead}
             size="small"
@@ -174,38 +192,72 @@ export default function Header() {
                 key={row.id}
                 onClick={() => handleNotificationClick(row)}
                 sx={{
-                  mb: 0.8,
+                  mb: 0.65,
                   mx: 0.8,
-                  borderRadius: "4px",
-                  borderLeft: row.is_read ? "2px solid transparent" : `2px solid ${tone.color}`,
+                  borderRadius: "10px",
+                  border: row.is_read
+                    ? `1px solid ${isLight ? "rgba(171,179,183,0.32)" : "rgba(91,64,62,0.2)"}`
+                    : `1px solid ${tone.color}66`,
                   bgcolor: row.is_read
-                    ? (isLight ? "rgba(234,239,241,0.65)" : "rgba(28,27,27,0.45)")
-                    : (isLight ? "rgba(229,226,227,0.6)" : "rgba(38,36,36,0.78)"),
+                    ? (isLight ? "rgba(234,239,241,0.72)" : "rgba(28,27,27,0.55)")
+                    : (isLight ? "rgba(255,255,255,0.9)" : "rgba(38,36,36,0.9)"),
                   alignItems: "flex-start",
+                  py: 1,
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 32, mt: 0.2 }}>
-                  <span className="material-symbols-outlined" style={{ color: tone.color, fontSize: 18 }}>
-                    {tone.icon}
-                  </span>
+                <ListItemIcon sx={{ minWidth: 44, mt: 0.1 }}>
+                  <Avatar
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      bgcolor: tone.bubble,
+                      color: tone.color,
+                      border: `1px solid ${tone.color}44`,
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                      {tone.icon}
+                    </span>
+                  </Avatar>
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <Typography sx={{ color: theme.palette.text.primary, fontSize: 12.5, fontWeight: 700 }}>
-                      {row.title}
-                    </Typography>
-                  }
-                  secondary={
-                    <>
-                      <Typography sx={{ color: theme.palette.text.secondary, fontSize: 11.5, mt: 0.3 }}>
-                        {row.message}
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+                      <Typography sx={{ color: theme.palette.text.primary, fontSize: 12.8, fontWeight: 700 }} noWrap>
+                        {row.title}
                       </Typography>
-                      <Typography sx={{ color: theme.palette.text.secondary, opacity: 0.85, fontSize: 10, mt: 0.5 }}>
+                      <Typography
+                        sx={{
+                          color: row.is_read ? theme.palette.text.secondary : tone.color,
+                          fontSize: 9.5,
+                          fontWeight: row.is_read ? 500 : 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {formatTimeAgo(row.created_at)}
                       </Typography>
-                    </>
+                    </Box>
+                  }
+                  secondary={
+                    <Typography sx={{ color: theme.palette.text.secondary, fontSize: 11.3, mt: 0.35 }} noWrap>
+                      {row.message}
+                    </Typography>
                   }
                 />
+                {!row.is_read && (
+                  <Box
+                    sx={{
+                      ml: 1,
+                      mt: 1,
+                      width: 9,
+                      height: 9,
+                      borderRadius: "50%",
+                      bgcolor: tone.color,
+                      boxShadow: `0 0 8px ${tone.color}`,
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
               </ListItemButton>
             );
           })}
@@ -219,13 +271,13 @@ export default function Header() {
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
         sx={{ mt: 7.5, mr: 1.5 }}
       >
-        <Alert
-          severity={snackbarSeverity(snackbar?.type)}
-          variant="filled"
-          onClose={() => setSnackbar(null)}
+        <Box
+          onClick={openFromSnackbar}
           sx={{
             minWidth: 320,
-            borderRadius: "8px",
+            maxWidth: 380,
+            borderRadius: "12px",
+            cursor: "pointer",
             border: isLight
               ? "1px solid rgba(171,179,183,0.45)"
               : "1px solid rgba(91,64,62,0.25)",
@@ -234,28 +286,52 @@ export default function Header() {
               : "0 16px 28px rgba(0,0,0,0.5)",
             bgcolor: isLight ? "#ffffff" : "#252526",
             color: isLight ? "#2b3437" : "#e5e2e1",
-            "& .MuiAlert-icon": {
-              color: isLight ? "#2b3437" : "#ffb3ad",
-            },
-            "& .MuiAlert-action": {
-              color: isLight ? "#2b3437" : "#e4beba",
-            },
+            px: 1.4,
+            py: 1,
           }}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.3 }}>
-            <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", fontWeight: 800, opacity: 0.75 }}>
-              ROCKEFELLER
-            </Typography>
-            <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
-              {snackbar?.title}
-            </Typography>
-            {snackbar?.message && (
-              <Typography sx={{ fontSize: 11, opacity: 0.9 }}>
-                {snackbar.message}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.1 }}>
+            <Avatar
+              sx={{
+                width: 34,
+                height: 34,
+                bgcolor: snackbarSeverity(snackbar?.type) === "error" ? "#3a1817" : "#17382f",
+                color: snackbarSeverity(snackbar?.type) === "error" ? "#ff5451" : "#4edea3",
+                border: `1px solid ${snackbarSeverity(snackbar?.type) === "error" ? "#ff545166" : "#4edea366"}`,
+                flexShrink: 0,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                {snackbarSeverity(snackbar?.type) === "error" ? "priority_high" : "chat"}
+              </span>
+            </Avatar>
+
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", fontWeight: 800, opacity: 0.75 }}>
+                ROCKEFELLER CHAT ALERT
               </Typography>
-            )}
+              <Typography sx={{ fontSize: 12, fontWeight: 800 }} noWrap>
+                {snackbar?.title}
+              </Typography>
+              {snackbar?.message && (
+                <Typography sx={{ fontSize: 11, opacity: 0.9 }} noWrap>
+                  {snackbar.message}
+                </Typography>
+              )}
+            </Box>
+
+            <IconButton
+              onClick={(event) => {
+                event.stopPropagation();
+                setSnackbar(null);
+              }}
+              size="small"
+              sx={{ color: theme.palette.text.secondary }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+            </IconButton>
           </Box>
-        </Alert>
+        </Box>
       </Snackbar>
     </>
   );

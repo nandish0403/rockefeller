@@ -7,11 +7,32 @@ from app.api.dependencies import get_current_user
 from app.core.rule_engine import run_blast_check
 from app.models.alert import Alert
 from app.models.blast_event import BlastEvent
+from app.models.notification import NotificationType
 from app.models.user import User
 from app.models.zone import Zone
 from app.services.ml_models import predict_blast_anomaly
+from app.services.notification_service import create_notifications_for_users
 
 router = APIRouter(prefix="/api/blasts", tags=["blasts"])
+
+
+def _target_refs(zone: Zone) -> set[str]:
+    return {ref for ref in [str(zone.id), zone.name] if ref}
+
+
+async def _target_user_ids(zone: Zone) -> list[str]:
+    refs = _target_refs(zone)
+    users = await User.find().to_list()
+
+    ids: list[str] = []
+    for user in users:
+        if user.role in ["admin", "safety_officer"]:
+            ids.append(str(user.id))
+            continue
+        if user.zone_assigned in refs:
+            ids.append(str(user.id))
+
+    return list(dict.fromkeys(ids))
 
 
 def _parse_date(value: Optional[str], *, end_of_day: bool = False) -> Optional[datetime]:
@@ -151,6 +172,22 @@ async def create_blast(
         )
         await alert.insert()
         alert_raised = True
+
+        recipients = await _target_user_ids(zone)
+        if recipients:
+            severity_label = "critical" if event.anomaly_severity == "critical" else "warning"
+            await create_notifications_for_users(
+                recipients,
+                title="Blast Anomaly Alert",
+                message=(
+                    f"{zone.name}: {severity_label} blast anomaly detected "
+                    f"(score {event.anomaly_score:.2f})."
+                ),
+                zone_id=str(zone.id),
+                zone_name=zone.name,
+                notif_type=NotificationType.alert,
+                send_push=True,
+            )
 
     await run_blast_check(str(zone.id))
 

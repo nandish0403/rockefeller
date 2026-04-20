@@ -127,11 +127,14 @@ export default function FieldReportPage() {
         severity: draft?.severity || prev.severity,
       }));
 
-      setAiStatus(
-        draft?.source === "gemini"
-          ? "AI draft generated from Gemini. Review before submit."
-          : "AI draft generated from fallback template. Add GEMINI_API_KEY for Gemini output."
-      );
+      const source = String(draft?.source || "").toLowerCase();
+      if (source === "groq") {
+        setAiStatus("AI draft generated from Groq. Review before submit.");
+      } else if (source === "fallback") {
+        setAiStatus("AI draft generated from fallback template. Add GROQ_API_KEY for Groq output.");
+      } else {
+        setAiStatus("AI draft generated. Review before submit.");
+      }
     } catch (err) {
       setError(err?.response?.data?.detail || "Failed to generate AI draft.");
     } finally {

@@ -1,18 +1,14 @@
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
 from groq import Groq
+from app.core.config import settings
 
 
-BACKEND_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(BACKEND_ROOT / ".env")
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GROQ_API_KEY = (settings.GROQ_API_KEY or "").strip()
+GROQ_MODEL = (settings.GROQ_MODEL or "llama-3.3-70b-versatile").strip()
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 
@@ -83,7 +79,7 @@ def generate_report_draft(payload: dict[str, Any]) -> dict[str, Any]:
 
     try:
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=GROQ_MODEL,
             temperature=0.3,
             max_tokens=400,
             messages=[

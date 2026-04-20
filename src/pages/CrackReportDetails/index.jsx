@@ -59,14 +59,25 @@ export default function CrackReportDetailsPage() {
       if (action === "notify") {
         const { data } = await api.patch(`/api/crack-reports/${report.id}/notify-critical`);
         const notified = Number(data?.notified_users ?? 0);
+        const inside = Number(data?.notified_inside_zone_workers ?? 0);
+        const outside = Number(data?.notified_outside_zone_workers ?? 0);
+        const nonWorkers = Number(data?.notified_non_workers ?? 0);
         if (notified > 0) {
-          setStatusMsg(`Critical notification sent to ${notified} users.`);
+          setStatusMsg(
+            `Critical notification sent to ${notified} users (${inside} inside-zone, ${outside} outside-zone, ${nonWorkers} non-workers).`
+          );
         } else {
           setStatusErr("No recipients were found for this critical alert. Check worker zone or district mapping.");
         }
       } else if (action === "verify") {
         const { data } = await api.patch(`/api/crack-reports/${report.id}/verify`);
-        setStatusMsg(`Verified and notified ${data?.notified_users ?? 0} workers.`);
+        const notified = Number(data?.notified_users ?? 0);
+        const inside = Number(data?.notified_inside_zone_workers ?? 0);
+        const outside = Number(data?.notified_outside_zone_workers ?? 0);
+        const nonWorkers = Number(data?.notified_non_workers ?? 0);
+        setStatusMsg(
+          `Verified and notified ${notified} users (${inside} inside-zone, ${outside} outside-zone, ${nonWorkers} non-workers).`
+        );
       } else if (action === "safe") {
         await api.patch(`/api/crack-reports/${report.id}/review`, {
           status: "reviewed",

@@ -144,6 +144,35 @@ async def _zone_refs_for_matching(zone: Zone, report: Optional[CrackReport] = No
     return {_norm(ref) for ref in raw_refs if ref}
 
 
+async def _split_users_by_zone_scope(
+    zone: Zone,
+    report: Optional[CrackReport] = None,
+) -> tuple[list[User], list[User], list[User]]:
+    all_users = await User.find().to_list()
+    zone_refs = await _zone_refs_for_matching(zone, report)
+
+    inside_zone_workers = [
+        user
+        for user in all_users
+        if user.role == "field_worker" and _match_worker_zone_refs(user, zone_refs)
+    ]
+    inside_worker_id_set = {str(user.id) for user in inside_zone_workers}
+
+    outside_zone_workers = [
+        user
+        for user in all_users
+        if user.role == "field_worker" and str(user.id) not in inside_worker_id_set
+    ]
+
+    non_worker_users = [
+        user
+        for user in all_users
+        if user.role != "field_worker"
+    ]
+
+    return inside_zone_workers, outside_zone_workers, non_worker_users
+
+
 async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> dict:
     zone = await _resolve_zone(report.zone_id, report.zone_name)
     if not zone:
@@ -167,19 +196,22 @@ async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> 
     )
     await alert.insert()
 
-    workers = await _target_workers_for_zone(zone, report)
-    engineers = await _target_engineers_for_zone(zone, report)
+    inside_zone_workers, outside_zone_workers, non_worker_users = await _split_users_by_zone_scope(
+        zone,
+        report,
+    )
 
-    worker_ids = [str(worker.id) for worker in workers]
-    engineer_ids = [str(engineer.id) for engineer in engineers]
+    inside_ids = [str(user.id) for user in inside_zone_workers]
+    outside_ids = [str(user.id) for user in outside_zone_workers]
+    non_worker_ids = [str(user.id) for user in non_worker_users]
 
-    if worker_ids:
+    if inside_ids:
         await create_notifications_for_users(
-            worker_ids,
-            title="Unsafe Area Advisory",
+            inside_ids,
+            title="Verified Crack Alert - Inside Zone",
             message=(
-                f"{zone.name} is not safe due to a verified crack condition. "
-                "Evacuate workers from the nearby area immediately and move to the designated safety zone."
+                f"You are assigned to {zone.name}. This crack report is verified and your zone is unsafe. "
+                "Stop work immediately, evacuate to the nearest safety point, and wait for clearance."
             ),
             zone_id=str(zone.id),
             zone_name=zone.name,
@@ -187,17 +219,31 @@ async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> 
             send_push=True,
         )
 
-    if engineer_ids:
+    if outside_ids:
         await create_notifications_for_users(
-            engineer_ids,
-            title="Field Engineer Inspection Required",
+            outside_ids,
+            title="Verified Crack Advisory - Outside Zone",
             message=(
-                f"Urgent crack inspection required in {zone.name}. "
-                "Area is unsafe; verify crack progression and secure the slope before work resumes."
+                f"A verified crack incident is active in {zone.name}. "
+                "You are outside the affected zone. Keep clear of that area and follow supervisor instructions."
             ),
             zone_id=str(zone.id),
             zone_name=zone.name,
             notif_type=NotificationType.warning,
+            send_push=True,
+        )
+
+    if non_worker_ids:
+        await create_notifications_for_users(
+            non_worker_ids,
+            title="Verified Crack Broadcast - Systemwide",
+            message=(
+                f"Crack report verified in {zone.name}. "
+                "Inside-zone workers were ordered to evacuate and outside-zone workers were advised to avoid the area."
+            ),
+            zone_id=str(zone.id),
+            zone_name=zone.name,
+            notif_type=NotificationType.alert,
             send_push=True,
         )
 
@@ -211,8 +257,11 @@ async def _verify_report_and_notify(report: CrackReport, reviewer_name: str) -> 
             "trigger_reason": alert.trigger_reason,
             "created_at": alert.created_at.isoformat() if alert.created_at else None,
         },
-        "notified_users": len(worker_ids),
-        "notified_engineers": len(engineer_ids),
+        "notified_users": len(inside_ids) + len(outside_ids) + len(non_worker_ids),
+        "notified_inside_zone_workers": len(inside_ids),
+        "notified_outside_zone_workers": len(outside_ids),
+        "notified_non_workers": len(non_worker_ids),
+        "notified_engineers": len(non_worker_ids),
     }
 
 # Map free-text crack type to valid CrackType enum values
@@ -552,28 +601,10 @@ async def notify_critical_crack_report(
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
 
-    all_users = await User.find().to_list()
-    zone_refs = await _zone_refs_for_matching(zone, report)
-
-    inside_zone_workers = [
-        user
-        for user in all_users
-        if user.role == "field_worker" and _match_worker_zone_refs(user, zone_refs)
-    ]
-
-    inside_worker_id_set = {str(user.id) for user in inside_zone_workers}
-
-    outside_zone_workers = [
-        user
-        for user in all_users
-        if user.role == "field_worker" and str(user.id) not in inside_worker_id_set
-    ]
-
-    non_worker_users = [
-        user
-        for user in all_users
-        if user.role != "field_worker"
-    ]
+    inside_zone_workers, outside_zone_workers, non_worker_users = await _split_users_by_zone_scope(
+        zone,
+        report,
+    )
 
     inside_ids = [str(user.id) for user in inside_zone_workers]
     outside_ids = [str(user.id) for user in outside_zone_workers]

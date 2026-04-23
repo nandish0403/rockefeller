@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
+from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
@@ -17,10 +18,10 @@ class AdminNotifyRequest(BaseModel):
     title: str = Field(min_length=3, max_length=140)
     message: str = Field(min_length=5, max_length=5000)
     audience: Literal["all", "selected"] = "all"
-    user_ids: list[str] = []
+    user_ids: list[str] = Field(default_factory=list)
     zone_name: str | None = None
     send_email: bool = False
-    cc_emails: list[EmailStr] = []
+    cc_emails: list[EmailStr] = Field(default_factory=list)
     notification_type: NotificationType = NotificationType.warning
 
 
@@ -69,12 +70,23 @@ async def admin_broadcast_notification(
 
     users: list[User]
     if body.audience == "all":
-        users = await User.find(User.role != "admin").to_list()
+        all_users = await User.find().to_list()
+        users = [u for u in all_users if str(u.role) != "admin"]
     else:
         requested = {str(u).strip() for u in body.user_ids if str(u).strip()}
         if not requested:
             raise HTTPException(status_code=400, detail="Select at least one user")
-        users = await User.find(User.id.in_(list(requested))).to_list()
+
+        ids: list[PydanticObjectId] = []
+        for raw in requested:
+            try:
+                ids.append(PydanticObjectId(raw))
+            except Exception:
+                continue
+        if not ids:
+            raise HTTPException(status_code=400, detail="No valid user ids were provided")
+
+        users = await User.find(User.id.in_(ids)).to_list()
 
     if not users:
         raise HTTPException(status_code=404, detail="No target users found")

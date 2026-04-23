@@ -29,6 +29,22 @@ function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function formatApiError(error, fallback) {
+  const detail = error?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    const first = detail[0];
+    if (typeof first === "string") return first;
+    if (first && typeof first === "object") {
+      const loc = Array.isArray(first.loc) ? first.loc.join(".") : "request";
+      return `${loc}: ${first.msg || "Validation error"}`;
+    }
+  }
+  if (detail && typeof detail === "object") return JSON.stringify(detail);
+  if (typeof detail === "string") return detail;
+  if (typeof error?.message === "string") return error.message;
+  return fallback;
+}
+
 function initialsOf(name, email = "") {
   const base = String(name || email || "AR").trim();
   if (!base) return "AR";
@@ -114,7 +130,7 @@ export default function AdminControlCenter() {
       setZones(safeArray(zonesRes?.items || zonesRes));
       setAlerts(safeArray(alertsRes?.data?.items || alertsRes?.data));
     } catch (e) {
-      setError(e?.response?.data?.detail || "Unable to load admin panel data.");
+      setError(formatApiError(e, "Unable to load admin panel data."));
     }
   };
 
@@ -311,7 +327,7 @@ export default function AdminControlCenter() {
       setNotifyOpen(false);
       setSelectedUserIds([]);
     } catch (err) {
-      setError(err?.response?.data?.detail || "Failed to send admin notification.");
+      setError(formatApiError(err, "Failed to send admin notification."));
     } finally {
       setSendingNotify(false);
     }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
+import { adminBroadcastNotification } from "../../api/notifications";
 import { fetchZones } from "../../api/zones";
 
 const C = {
@@ -88,6 +89,17 @@ export default function AdminControlCenter() {
   const [notice, setNotice] = useState("");
   const [range, setRange] = useState("Last 7 Days");
   const [syncing, setSyncing] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [sendingNotify, setSendingNotify] = useState(false);
+  const [notifyAudience, setNotifyAudience] = useState("all");
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [notifyForm, setNotifyForm] = useState({
+    title: "Contract area not detected by ML models",
+    message: "Email Kate Wang for users sent a email. Generate assets of contract area which is not detected by ML models and notify users to include it.",
+    zone_name: "",
+    send_email: true,
+    cc_emails: "kate.wang@rockefeller.local",
+  });
 
   const loadData = async () => {
     setError("");
@@ -206,6 +218,11 @@ export default function AdminControlCenter() {
     ];
   }, [recentUsers]);
 
+  const targetableUsers = useMemo(
+    () => users.filter((u) => String(u?.role || "") !== "admin"),
+    [users],
+  );
+
   const heatCells = useMemo(() => heatmapTemplate(), []);
 
   const barMax = useMemo(() => Math.max(...weeklyCounts, 1), [weeklyCounts]);
@@ -249,6 +266,55 @@ export default function AdminControlCenter() {
     await loadData();
     setSyncing(false);
     setNotice(`System sync completed at ${utcTime(new Date())}`);
+  };
+
+  const toggleSelectedUser = (userId) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
+  };
+
+  const handleNotifySubmit = async (e) => {
+    e.preventDefault();
+    if (!notifyForm.title.trim() || !notifyForm.message.trim()) {
+      setError("Notification title and message are required.");
+      return;
+    }
+    if (notifyAudience === "selected" && selectedUserIds.length === 0) {
+      setError("Select at least one user or switch audience to all.");
+      return;
+    }
+
+    setSendingNotify(true);
+    setError("");
+    try {
+      const ccList = String(notifyForm.cc_emails || "")
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+
+      const res = await adminBroadcastNotification({
+        title: notifyForm.title.trim(),
+        message: notifyForm.message.trim(),
+        audience: notifyAudience,
+        user_ids: notifyAudience === "selected" ? selectedUserIds : [],
+        zone_name: notifyForm.zone_name.trim() || null,
+        send_email: !!notifyForm.send_email,
+        cc_emails: ccList,
+        notification_type: "warning",
+      });
+
+      setNotice(
+        `Broadcast sent: ${res.notified || 0} in-app, ${res.emailed || 0} emails` +
+          (res.failed_email ? `, ${res.failed_email} email failures` : ""),
+      );
+      setNotifyOpen(false);
+      setSelectedUserIds([]);
+    } catch (err) {
+      setError(err?.response?.data?.detail || "Failed to send admin notification.");
+    } finally {
+      setSendingNotify(false);
+    }
   };
 
   return (
@@ -550,6 +616,175 @@ export default function AdminControlCenter() {
           </div>
         </div>
       </div>
+
+      <button
+        onClick={() => setNotifyOpen(true)}
+        style={{
+          position: "fixed",
+          right: 18,
+          bottom: 18,
+          zIndex: 60,
+          border: "none",
+          borderRadius: 20,
+          padding: "10px 14px",
+          background: C.primary,
+          color: C.onPrimary,
+          fontSize: 11,
+          fontWeight: 900,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          display: "inline-flex",
+          gap: 8,
+          alignItems: "center",
+          cursor: "pointer",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>campaign</span>
+        Notify Users
+      </button>
+
+      {notifyOpen ? (
+        <div
+          onClick={() => !sendingNotify && setNotifyOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 70,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "flex-end",
+            padding: 16,
+          }}
+        >
+          <form
+            onSubmit={handleNotifySubmit}
+            onClick={(evt) => evt.stopPropagation()}
+            style={{
+              width: "min(460px, calc(100vw - 24px))",
+              maxHeight: "88vh",
+              overflowY: "auto",
+              background: C.surfaceCard,
+              border: "1px solid rgba(91,64,62,0.5)",
+              borderRadius: 6,
+              padding: 14,
+              color: C.text,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: C.primary }}>
+                Admin User Notification
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotifyOpen(false)}
+                style={{ ...iconBtnStyle, color: C.textMuted }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <label style={modalLabelStyle}>Audience</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              {[
+                { value: "all", label: "All Users" },
+                { value: "selected", label: "Selected Users" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setNotifyAudience(option.value)}
+                  style={{
+                    border: "1px solid rgba(91,64,62,0.5)",
+                    background: notifyAudience === option.value ? "rgba(255,179,173,0.2)" : C.surfaceLow,
+                    color: notifyAudience === option.value ? C.primary : C.textMuted,
+                    borderRadius: 4,
+                    padding: "6px 9px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {notifyAudience === "selected" ? (
+              <div style={{ border: "1px solid rgba(91,64,62,0.4)", borderRadius: 4, padding: 8, maxHeight: 120, overflowY: "auto", marginBottom: 10 }}>
+                {targetableUsers.length === 0 ? (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>No users available.</div>
+                ) : (
+                  targetableUsers.map((u) => {
+                    const id = String(u.id || "");
+                    const checked = selectedUserIds.includes(id);
+                    return (
+                      <label key={id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, marginBottom: 6, cursor: "pointer" }}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleSelectedUser(id)} />
+                        <span>{u.name || "User"} ({u.email || "no-email"})</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            ) : null}
+
+            <label style={modalLabelStyle}>Subject</label>
+            <input
+              value={notifyForm.title}
+              onChange={(e) => setNotifyForm((prev) => ({ ...prev, title: e.target.value }))}
+              style={modalInputStyle}
+              maxLength={140}
+            />
+
+            <label style={modalLabelStyle}>Contract / Zone Name (optional)</label>
+            <input
+              value={notifyForm.zone_name}
+              onChange={(e) => setNotifyForm((prev) => ({ ...prev, zone_name: e.target.value }))}
+              style={modalInputStyle}
+              placeholder="e.g., Contract Area C-17"
+            />
+
+            <label style={modalLabelStyle}>Message</label>
+            <textarea
+              value={notifyForm.message}
+              onChange={(e) => setNotifyForm((prev) => ({ ...prev, message: e.target.value }))}
+              style={{ ...modalInputStyle, minHeight: 94, resize: "vertical" }}
+              maxLength={5000}
+            />
+
+            <label style={{ ...modalLabelStyle, marginTop: 2 }}>
+              <input
+                type="checkbox"
+                checked={notifyForm.send_email}
+                onChange={(e) => setNotifyForm((prev) => ({ ...prev, send_email: e.target.checked }))}
+                style={{ marginRight: 8 }}
+              />
+              Send Email Also
+            </label>
+
+            {notifyForm.send_email ? (
+              <>
+                <label style={modalLabelStyle}>CC Emails (comma separated)</label>
+                <input
+                  value={notifyForm.cc_emails}
+                  onChange={(e) => setNotifyForm((prev) => ({ ...prev, cc_emails: e.target.value }))}
+                  style={modalInputStyle}
+                  placeholder="kate.wang@rockefeller.local"
+                />
+              </>
+            ) : null}
+
+            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setNotifyOpen(false)} style={modalGhostBtnStyle} disabled={sendingNotify}>Cancel</button>
+              <button type="submit" style={modalSendBtnStyle} disabled={sendingNotify}>
+                {sendingNotify ? "Sending..." : "Send"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -594,5 +829,49 @@ const actionTextButtonStyle = {
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.12em",
+  cursor: "pointer",
+};
+
+const modalLabelStyle = {
+  fontSize: 10,
+  color: C.textMuted,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  marginBottom: 4,
+  display: "block",
+};
+
+const modalInputStyle = {
+  width: "100%",
+  boxSizing: "border-box",
+  border: "1px solid rgba(91,64,62,0.45)",
+  background: C.surfaceLow,
+  color: C.text,
+  borderRadius: 4,
+  padding: "8px 10px",
+  fontSize: 12,
+  marginBottom: 10,
+  outline: "none",
+};
+
+const modalGhostBtnStyle = {
+  border: "1px solid rgba(91,64,62,0.6)",
+  background: C.surfaceLow,
+  color: C.textMuted,
+  borderRadius: 4,
+  padding: "7px 12px",
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const modalSendBtnStyle = {
+  border: "none",
+  background: C.primary,
+  color: C.onPrimary,
+  borderRadius: 4,
+  padding: "7px 12px",
+  fontSize: 11,
+  fontWeight: 800,
   cursor: "pointer",
 };

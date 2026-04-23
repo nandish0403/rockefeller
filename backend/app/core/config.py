@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     DAILY_REFRESH_TIMEZONE: str = "Asia/Kolkata"
     DAILY_REFRESH_HOUR: int = 6
     DAILY_REFRESH_MINUTE: int = 0
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+    EMAIL_FROM: str = ""
 
     class Config:
         env_file = str(ENV_FILE_PATH)

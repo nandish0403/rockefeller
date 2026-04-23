@@ -8,3 +8,6 @@ export const markNotificationRead = (id) =>
 
 export const markAllNotificationsRead = () =>
   api.patch("/api/notifications/read-all").then((r) => r.data);
+
+export const adminBroadcastNotification = (payload) =>
+  api.post("/api/notifications/admin/broadcast", payload).then((r) => r.data);

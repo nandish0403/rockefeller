@@ -6,6 +6,7 @@ import 'features/auth/login_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/map_zones/map_screen.dart';
 import 'features/alerts/alerts_screen.dart';
+import 'features/alerts/alert_detail_screen.dart';
 import 'features/reports/reports_screen.dart';
 import 'features/crack_reports/crack_reports_screen.dart';
 import 'features/blasts/blasts_screen.dart';
@@ -51,7 +52,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
           GoRoute(path: '/map', builder: (_, __) => const MapScreen()),
-          GoRoute(path: '/alerts', builder: (_, __) => const AlertsScreen()),
+          GoRoute(
+            path: '/alerts',
+            builder: (_, __) => const AlertsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, state) =>
+                    AlertDetailScreen(alertId: state.pathParameters['id']!),
+              ),
+            ],
+          ),
           GoRoute(
             path: '/reports',
             builder: (_, __) => const ReportsScreen(),

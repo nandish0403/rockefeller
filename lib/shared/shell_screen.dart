@@ -7,7 +7,6 @@ import '../core/providers/app_providers.dart';
 import '../core/providers/auth_provider.dart';
 import '../core/theme/app_theme.dart';
 import '../core/models/app_models.dart';
-import '../core/network/websocket_service.dart';
 
 /// Shell with bottom navigation bar — wraps all tab screens
 class ShellScreen extends ConsumerWidget {
@@ -44,30 +43,35 @@ class _EmergencyBroadcastListener extends ConsumerStatefulWidget {
 
 class _EmergencyBroadcastListenerState
     extends ConsumerState<_EmergencyBroadcastListener> {
-  StreamSubscription<WsEvent>? _wsSubscription;
+  OverlayEntry? _overlayEntry;
+  Timer? _overlayTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _listenToWs());
-  }
-
-  void _listenToWs() {
-    final ws = ref.read(wsServiceProvider);
-    _wsSubscription?.cancel();
-    _wsSubscription = ws.events.listen((event) {
-      if (event.type == WsEventType.emergencyBroadcast && mounted) {
-        _showEmergencyDialog(event.data);
-      } else if (event.type == WsEventType.notification && mounted) {
-        _showNotificationBanner(event.data);
-      }
-    });
   }
 
   @override
   void dispose() {
-    _wsSubscription?.cancel();
+    _overlayTimer?.cancel();
+    _overlayEntry?.remove();
     super.dispose();
+  }
+
+  void _handleUiEvent(NotificationUiEvent event) {
+    if (!mounted) return;
+
+    if (event.isEmergency) {
+      _showEmergencyDialog(event.payload);
+      return;
+    }
+
+    if (event.navigateOnly) {
+      context.go(event.navigatePath);
+      return;
+    }
+
+    _showNotificationBanner(event);
   }
 
   void _showEmergencyDialog(Map<String, dynamic> data) {
@@ -78,10 +82,10 @@ class _EmergencyBroadcastListenerState
     );
   }
 
-  void _showNotificationBanner(Map<String, dynamic> data) {
-    final title = data['title']?.toString() ?? 'New notification';
-    final message = data['message']?.toString();
-    final type = data['type']?.toString().toLowerCase() ?? 'info';
+  void _showNotificationBanner(NotificationUiEvent event) {
+    final title = event.title;
+    final message = event.message;
+    final type = event.type.toLowerCase();
     final accent = switch (type) {
       'alert' => AppTheme.errorRedHud,
       'warning' => AppTheme.amberWarning,
@@ -92,104 +96,136 @@ class _EmergencyBroadcastListenerState
       'warning' => 'Sentinel Warning',
       _ => 'Sentinel Ops',
     };
-    final text = (message == null || message.isEmpty) ? title : message;
+    final text = message.isEmpty ? title : message;
 
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        padding: EdgeInsets.zero,
-        content: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: accent.withValues(alpha: 0.58)),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.2),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
+    _overlayTimer?.cancel();
+    _overlayEntry?.remove();
+
+    final overlay = Overlay.of(context, rootOverlay: true);
+    if (overlay == null) return;
+
+    _overlayEntry = OverlayEntry(
+      builder: (overlayContext) {
+        final topPadding = MediaQuery.of(overlayContext).padding.top + 10;
+        return Positioned(
+          top: topPadding,
+          left: 12,
+          right: 12,
+          child: Material(
+            color: Colors.transparent,
+            child: TweenAnimationBuilder<Offset>(
+              duration: const Duration(milliseconds: 220),
+              tween: Tween(begin: const Offset(0, -0.26), end: Offset.zero),
+              curve: Curves.easeOutCubic,
+              builder: (_, offset, child) => Transform.translate(
+                offset: Offset(0, offset.dy * 100),
+                child: child,
               ),
-            ],
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              messenger.hideCurrentSnackBar();
-              if (mounted) {
-                context.go('/notifications');
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: accent.withValues(alpha: 0.18),
-                    child: Icon(Icons.notifications_active_rounded, size: 16, color: accent),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () {
+                  _overlayEntry?.remove();
+                  _overlayEntry = null;
+                  if (mounted) {
+                    context.go(event.navigatePath);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: accent.withValues(alpha: 0.56)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.16),
+                        blurRadius: 16,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          sender,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: accent,
-                            fontFamily: 'SpaceGrotesk',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                          ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 17,
+                        backgroundColor: accent.withValues(alpha: 0.2),
+                        child: Icon(Icons.notifications_active_rounded, size: 17, color: accent),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              sender,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: accent,
+                                fontFamily: 'SpaceGrotesk',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.onSurface,
+                                fontFamily: 'Inter',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.onSurfaceVariant,
+                                fontFamily: 'Inter',
+                                fontSize: 11.5,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.onSurface,
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          text,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.onSurfaceVariant,
-                            fontFamily: 'Inter',
-                            fontSize: 11.5,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.onSurfaceVariant),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.onSurfaceVariant),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      ),
+        );
+      },
     );
+
+    overlay.insert(_overlayEntry!);
+    _overlayTimer = Timer(const Duration(seconds: 4), () {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    });
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    ref.listen<int>(
+      notificationProvider.select((s) => s.uiEventVersion),
+      (previous, current) {
+        final event = ref.read(notificationProvider).latestUiEvent;
+        if (event == null) return;
+        _handleUiEvent(event);
+      },
+    );
+
+    return widget.child;
+  }
 }
 
 class _EmergencyDialog extends StatelessWidget {

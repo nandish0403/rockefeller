@@ -43,6 +43,7 @@ class WsEvent {
 class WebSocketService {
   WebSocketChannel? _channel;
   StreamController<WsEvent>? _controller;
+  StreamController<bool>? _connectionController;
   String? _userId;
   bool _isConnected = false;
   int _retryCount = 0;
@@ -53,6 +54,12 @@ class WebSocketService {
     _controller ??= StreamController<WsEvent>.broadcast();
     return _controller!.stream;
   }
+
+  Stream<bool> get connectionChanges {
+    _connectionController ??= StreamController<bool>.broadcast();
+    return _connectionController!.stream;
+  }
+
   bool get isConnected => _isConnected;
 
   Future<void> connect(String userId) async {
@@ -82,23 +89,27 @@ class WebSocketService {
         onError: (error) {
           _log.e('WS error: $error');
           _isConnected = false;
+          _connectionController?.add(false);
           _heartbeatTimer?.cancel();
           _scheduleReconnect();
         },
         onDone: () {
           _log.w('WS connection closed');
           _isConnected = false;
+          _connectionController?.add(false);
           _heartbeatTimer?.cancel();
           _scheduleReconnect();
         },
       );
 
       _isConnected = true;
+      _connectionController?.add(true);
       _startHeartbeat();
       _log.d('WS connected for user $_userId');
     } catch (e) {
       _log.e('WS connect failed: $e');
       _isConnected = false;
+      _connectionController?.add(false);
       _scheduleReconnect();
     }
   }
@@ -136,11 +147,13 @@ class WebSocketService {
     _heartbeatTimer?.cancel();
     _channel?.sink.close();
     _isConnected = false;
+    _connectionController?.add(false);
     _log.d('WS disconnected');
   }
 
   void dispose() {
     disconnect();
     _controller?.close();
+    _connectionController?.close();
   }
 }

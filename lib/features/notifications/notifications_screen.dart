@@ -93,7 +93,7 @@ class NotificationsScreen extends ConsumerWidget {
                       final n = state.notifications[i];
                       return InkWell(
                         borderRadius: BorderRadius.circular(14),
-                        onTap: () => notifier.markRead(n.id),
+                        onTap: () => notifier.handleNotificationTap(n),
                         child: _ChatNotificationTile(notification: n),
                       );
                     },

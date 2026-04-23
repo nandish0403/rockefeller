@@ -434,6 +434,8 @@ class NotificationModel {
   final String message;
   final bool isRead;
   final String? type;
+  final String? zoneId;
+  final String? zoneName;
   final DateTime? createdAt;
 
   const NotificationModel({
@@ -442,6 +444,8 @@ class NotificationModel {
     required this.message,
     required this.isRead,
     this.type,
+    this.zoneId,
+    this.zoneName,
     this.createdAt,
   });
 
@@ -452,6 +456,8 @@ class NotificationModel {
         message:   json['message']?.toString() ?? '',
         isRead:    json['is_read'] as bool? ?? false,
         type:      json['type']?.toString(),
+        zoneId:    json['zone_id']?.toString(),
+        zoneName:  json['zone_name']?.toString(),
         createdAt: json['created_at'] != null
             ? DateTime.tryParse(json['created_at'].toString())
             : null,
@@ -460,7 +466,10 @@ class NotificationModel {
   NotificationModel copyWith({bool? isRead}) => NotificationModel(
     id: id, title: title, message: message,
     isRead: isRead ?? this.isRead,
-    type: type, createdAt: createdAt,
+    type: type,
+    zoneId: zoneId,
+    zoneName: zoneName,
+    createdAt: createdAt,
   );
 }
 

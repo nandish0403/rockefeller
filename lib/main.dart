@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
+import 'core/notifications/mobile_push_service.dart';
+import 'core/providers/app_providers.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializePushMessagingCore();
 
   // Lock to portrait mode for mobile
   await SystemChrome.setPreferredOrientations([
@@ -30,6 +33,7 @@ class RockApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(notificationProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(

@@ -1,7 +1,9 @@
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from beanie import PydanticObjectId
 from app.core.database import init_db, close_db
 from app.core.security import decode_token
@@ -26,7 +28,7 @@ from app.api.routes.predictions   import router as predictions_router
 from app.routers.groq_router import router as groq_router
 from app.services.ml_models import preload_models, district_model_count
 from app.services.crack_ai import preload_crack_model
-from app.services.forecast_runner import run_daily_risk_forecast
+from app.services.daily_refresh import run_refresh_pipeline, run_scheduled_refresh_loop
 from app.websocket.manager import ws_manager
 from app.models.user import User
 from app.core.config import settings
@@ -34,14 +36,17 @@ import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    scheduler_stop_event = asyncio.Event()
+    scheduler_task: asyncio.Task | None = None
+
     await init_db()
 
-    # Pull latest real-world data on every startup
+    # Prepare crack model as part of startup lifecycle.
     try:
-        from app.ml.collectors.imd_collector  import run as imd_run
-        await imd_run()
+        preload_crack_model()
+        print("[Startup] Crack classifier model loaded ✅")
     except Exception as e:
-        print(f"[Startup] Collector error (non-fatal): {e}")
+        print(f"[Startup] Crack classifier preload failed (non-fatal): {e}")
 
     # Pre-load ML models into memory if available.
     try:
@@ -52,18 +57,33 @@ async def lifespan(app: FastAPI):
         print(f"[Startup] Rockefeller model preload failed (non-fatal): {e}")
 
     try:
-        preload_crack_model()
-        print("[Startup] Crack classifier model loaded ✅")
+        result = await run_refresh_pipeline(trigger="startup")
+        print(
+            "[Startup] Data refresh complete ✅ "
+            f"(weather={result['weather_records']}, predictions={result['predictions_written']})"
+        )
     except Exception as e:
-        print(f"[Startup] Crack classifier preload failed (non-fatal): {e}")
+        print(f"[Startup] Data refresh failed (non-fatal): {e}")
 
     try:
-        rows = await run_daily_risk_forecast()
-        print(f"[Startup] Daily risk forecast generated for {rows} zones ✅")
+        scheduler_task = asyncio.create_task(run_scheduled_refresh_loop(scheduler_stop_event))
+        app.state.daily_refresh_stop_event = scheduler_stop_event
+        app.state.daily_refresh_task = scheduler_task
+        print(
+            "[Startup] Daily refresh scheduler active ✅ "
+            f"({settings.DAILY_REFRESH_HOUR:02d}:{settings.DAILY_REFRESH_MINUTE:02d} {settings.DAILY_REFRESH_TIMEZONE})"
+        )
     except Exception as e:
-        print(f"[Startup] Daily risk forecast skipped (non-fatal): {e}")
+        print(f"[Startup] Daily refresh scheduler failed to start (non-fatal): {e}")
 
     yield
+
+    scheduler_stop_event.set()
+    if scheduler_task:
+        scheduler_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await scheduler_task
+
     await close_db()
 
 app = FastAPI(title="GeoAlert API", version="2.0.0", lifespan=lifespan)

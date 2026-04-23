@@ -1,8 +1,11 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.zone import Zone
+from app.services.daily_refresh import run_refresh_pipeline
 from app.services.ml_models import get_district_forecast
 
 router = APIRouter(prefix="/api/rainfall", tags=["rainfall"])
@@ -75,3 +78,24 @@ async def rainfall_zone_risk_flags(
         "forecast_days": days_ahead,
         "zones": flags,
     }
+
+
+@router.post("/refresh")
+async def refresh_rainfall_data(current_user: User = Depends(require_admin)):
+    """
+    Admin-only endpoint to run collector + prediction refresh.
+    Runs in background and returns immediately.
+    """
+    try:
+        asyncio.create_task(run_refresh_pipeline(trigger=f"api:{current_user.email}"))
+
+        return {
+            "status": "refresh_started",
+            "message": "Rainfall + prediction refresh initiated in background",
+            "triggered_by": current_user.email,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Refresh failed: {str(e)}"
+        )

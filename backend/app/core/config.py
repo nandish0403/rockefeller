@@ -37,7 +37,10 @@ class Settings(BaseSettings):
     CRACK_MODEL_PATH: str = ""
     CRACK_MODEL_URL: str = ""
     MODEL_CACHE_DIR: str = "runtime_models"
-    MODEL_DOWNLOAD_TIMEOUT_SEC: int = 30
+    MODEL_DOWNLOAD_TIMEOUT_SEC: int = 300
+    DAILY_REFRESH_TIMEZONE: str = "Asia/Kolkata"
+    DAILY_REFRESH_HOUR: int = 6
+    DAILY_REFRESH_MINUTE: int = 0
 
     class Config:
         env_file = str(ENV_FILE_PATH)

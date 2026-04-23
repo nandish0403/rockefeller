@@ -60,6 +60,27 @@ Deployment steps:
 3. Verify:
    - https://rockefeller-production.up.railway.app/api/health
 
+## Crack Model Setup on Railway
+
+Configure these environment variables in Railway:
+
+```env
+CRACK_MODEL_URL=<direct .keras asset URL>
+MODEL_CACHE_DIR=/tmp/model_cache
+MODEL_DOWNLOAD_TIMEOUT_SEC=300
+CRACK_MODEL_PATH=/tmp/model_cache/crack_model.keras
+```
+
+Notes:
+- Use a direct release-asset URL for the model file, not the release page URL.
+- On startup, the backend downloads the file only if it does not already exist at CRACK_MODEL_PATH.
+- If a downloaded file is corrupted, the backend deletes it and retries download once.
+- If model preparation fails, crack inference endpoints return:
+
+```json
+{"error":"model_unavailable"}
+```
+
 ## CORS Setup for Vercel
 
 Production Vercel URL:
@@ -78,3 +99,5 @@ Ensure CORS_ORIGINS includes this exact domain and keep CORS_ORIGIN_REGEX enable
 - Do not commit real secrets.
 - Keep backend/.env out of Git.
 - Rotate compromised API keys immediately.
+- Backend runs a daily refresh job at 06:00 (default Asia/Kolkata) to pull fresh rainfall and regenerate zone predictions.
+- Configure `DAILY_REFRESH_TIMEZONE`, `DAILY_REFRESH_HOUR`, and `DAILY_REFRESH_MINUTE` in `.env` to change schedule.

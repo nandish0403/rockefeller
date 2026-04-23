@@ -133,3 +133,4 @@ async def run():
         await asyncio.sleep(0.5)   # be polite to the API
 
     print(f"[IMD Collector] Done. {success}/{len(DISTRICTS)} districts updated.")
+    return success

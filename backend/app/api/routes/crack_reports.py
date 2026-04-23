@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from typing import Optional, List
 from datetime import datetime
 import os, uuid
@@ -14,7 +15,7 @@ from app.core.rule_engine import run_crack_check
 from app.core.config import settings
 from app.models.user import User
 from app.services.notification_service import create_notifications_for_users
-from app.services.crack_ai import score_crack_image
+from app.services.crack_ai import ModelUnavailableError, score_crack_image
 
 router = APIRouter(prefix="/api/crack-reports", tags=["crack-reports"])
 
@@ -402,6 +403,8 @@ async def create_crack_report(
     if mode == "ai":
         try:
             ai_result = score_crack_image(photo_bytes)
+        except ModelUnavailableError:
+            return JSONResponse(status_code=503, content={"error": "model_unavailable"})
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=f"Invalid crack image: {exc}")
         except Exception as exc:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+import shutil
 from typing import Any
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import numpy as np
 from app.core.config import settings
@@ -15,6 +17,14 @@ _CRITICAL_THRESHOLD = 0.68
 _model: Any | None = None
 _tf: Any | None = None
 _loaded_model_path: Path | None = None
+_model_error: str | None = None
+_model_init_attempted = False
+
+logger = logging.getLogger(__name__)
+
+
+class ModelUnavailableError(RuntimeError):
+    """Raised when crack model cannot be prepared for inference."""
 
 
 def _backend_root() -> Path:
@@ -73,31 +83,47 @@ def _dataset_base() -> Path:
     return backend_root / "dataset"
 
 
-def _cache_dir() -> Path:
-    configured = str(settings.MODEL_CACHE_DIR or "runtime_models").strip()
-    path = _resolve_config_path(configured)
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+def _model_target_path() -> Path:
+    configured_file = str(settings.CRACK_MODEL_PATH or "").strip()
+    if configured_file:
+        target = _resolve_config_path(configured_file)
+    else:
+        cache_dir = _resolve_config_path(str(settings.MODEL_CACHE_DIR or "runtime_models").strip())
+        target = cache_dir / _MODEL1_FILE
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
 
 
-def _download_model_if_configured() -> Path | None:
+def _download_model_if_configured(target: Path) -> Path | None:
     url = str(settings.CRACK_MODEL_URL or "").strip()
     if not url:
         return None
 
-    target = _cache_dir() / _MODEL1_FILE
-    if target.exists():
-        return target
+    tmp_target = target.with_suffix(target.suffix + ".download")
 
     try:
-        timeout = int(settings.MODEL_DOWNLOAD_TIMEOUT_SEC or 30)
-        with urlopen(url, timeout=timeout) as response:  # nosec B310
-            data = response.read()
-        if not data:
+        timeout = int(settings.MODEL_DOWNLOAD_TIMEOUT_SEC or 300)
+
+        logger.info("Downloading crack model...")
+        print("Downloading crack model...")
+        request = Request(url, headers={"User-Agent": "rockefeller-backend/1.0"})
+        with urlopen(request, timeout=timeout) as response, tmp_target.open("wb") as out_file:  # nosec B310
+            shutil.copyfileobj(response, out_file)
+
+        if not tmp_target.exists() or tmp_target.stat().st_size == 0:
             raise RuntimeError("Downloaded crack model is empty")
-        target.write_bytes(data)
+
+        tmp_target.replace(target)
+        logger.info("Model downloaded successfully")
+        print("Model downloaded successfully")
         return target
     except Exception as exc:
+        try:
+            if tmp_target.exists():
+                tmp_target.unlink()
+        except Exception:
+            pass
         raise RuntimeError(f"Unable to download crack model from CRACK_MODEL_URL: {exc}")
 
 
@@ -116,10 +142,15 @@ def _resolve_crack_model_path() -> Path:
         if candidate.exists():
             return candidate
 
-    downloaded = _download_model_if_configured()
+    target = _model_target_path()
+    if target.exists():
+        return target
+
+    downloaded = _download_model_if_configured(target)
     if downloaded and downloaded.exists():
         return downloaded
 
+    checked.append(str(target))
     raise FileNotFoundError(
         "Crack model file not found. Checked: "
         + ", ".join(checked)
@@ -128,18 +159,66 @@ def _resolve_crack_model_path() -> Path:
 
 
 def preload_crack_model() -> None:
-    global _model, _loaded_model_path
+    global _model, _loaded_model_path, _model_error, _model_init_attempted
     if _model is not None:
         return
 
-    tf = _ensure_tf()
-    model_path = _resolve_crack_model_path()
-    _model = tf.keras.models.load_model(model_path, compile=False)
-    _loaded_model_path = model_path
+    if _model_init_attempted and _model_error:
+        raise ModelUnavailableError(_model_error)
+
+    _model_init_attempted = True
+
+    try:
+        tf = _ensure_tf()
+        model_path = _resolve_crack_model_path()
+        _model = tf.keras.models.load_model(model_path, compile=False)
+        _loaded_model_path = model_path
+        _model_error = None
+        logger.info("Crack model loaded")
+        print("Crack model loaded")
+        return
+    except Exception as first_exc:
+        model_path = _model_target_path()
+        can_retry_download = bool(str(settings.CRACK_MODEL_URL or "").strip()) and model_path.exists()
+        if not can_retry_download:
+            _model_error = str(first_exc)
+            raise ModelUnavailableError(_model_error)
+
+        logger.warning(
+            "Crack model load failed; deleting file and retrying download once: %s",
+            first_exc,
+        )
+        print(f"Crack model load failed; deleting file and retrying download once: {first_exc}")
+        try:
+            model_path.unlink()
+        except Exception:
+            pass
+
+    try:
+        tf = _ensure_tf()
+        model_path = _model_target_path()
+        downloaded_path = _download_model_if_configured(model_path)
+        if not downloaded_path:
+            raise RuntimeError("CRACK_MODEL_URL is required for retry download")
+
+        _model = tf.keras.models.load_model(downloaded_path, compile=False)
+        _loaded_model_path = downloaded_path
+        _model_error = None
+        logger.info("Crack model loaded")
+        print("Crack model loaded")
+    except Exception as second_exc:
+        _model = None
+        _loaded_model_path = None
+        _model_error = str(second_exc)
+        raise ModelUnavailableError(_model_error)
 
 
-def crack_model_status() -> dict[str, bool]:
-    return {"model1_loaded": _model is not None}
+def crack_model_status() -> dict[str, bool | str | None]:
+    return {
+        "model1_loaded": _model is not None,
+        "model_error": _model_error,
+        "model_path": str(_loaded_model_path) if _loaded_model_path else None,
+    }
 
 
 def _preprocess(image_bytes: bytes) -> np.ndarray:
@@ -157,6 +236,9 @@ def _preprocess(image_bytes: bytes) -> np.ndarray:
 def score_crack_image(image_bytes: bytes) -> dict[str, float | int | str]:
     if _model is None:
         preload_crack_model()
+
+    if _model is None:
+        raise ModelUnavailableError("Crack model unavailable")
 
     model_input = _preprocess(image_bytes)
     raw_pred = _model.predict(model_input, verbose=0)

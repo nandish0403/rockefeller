@@ -1,0 +1,28 @@
+name: Refresh Rainfall Data Daily
+
+# Trigger at 6:00 AM IST every day (0:30 AM UTC)
+on:
+  schedule:
+    - cron: '30 0 * * *'  # 0:30 UTC = 6:00 AM IST daily
+  # Allow manual trigger in Actions tab
+  workflow_dispatch:
+
+jobs:
+  refresh-rainfall:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Refresh rainfall data from IMD collector
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.RAINFALL_REFRESH_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.BACKEND_API_URL }}/api/rainfall/refresh"
+        env:
+          BACKEND_API_URL: ${{ secrets.BACKEND_API_URL }}
+          RAINFALL_REFRESH_TOKEN: ${{ secrets.RAINFALL_REFRESH_TOKEN }}
+
+      - name: Log completion
+        run: |
+          echo "✅ Rainfall refresh triggered for $(date -u)"

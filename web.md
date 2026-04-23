@@ -688,6 +688,74 @@ Grok generation failures:
 - Keep backend/.env and root .env files gitignored
 - Use least-privilege DB users and periodic secret rotation
 
+## 11.5 Daily Rainfall Data Refresh (GitHub Actions)
+
+**Problem solved**: Backend rainfall data doesn't automatically update; relies only on startup or manual refresh.
+
+**Solution**: Automated daily refresh via GitHub Actions at 6:00 AM IST daily.
+
+### Setup Steps
+
+1. **Add a GitHub Actions Secret** in repository settings:
+   - Go to Settings → Secrets and variables → Actions
+   - Add `RAINFALL_REFRESH_TOKEN`: JWT admin token (get from logged-in admin user)
+   - Add `BACKEND_API_URL`: Backend URL (e.g., `https://rockefeller-production.up.railway.app`)
+
+2. **Generate admin JWT token** for GitHub Actions:
+   ```bash
+   # Login with admin account via frontend
+   # Copy token from localStorage['token']
+   # Or use backend script:
+   python -c "
+   from app.core.security import create_access_token
+   from app.models.user import User
+   # Run in authenticated context to generate token
+   token = create_access_token(data={'sub': 'admin@rockefeller.io'})
+   print(token)
+   "
+   ```
+
+3. **Workflow file**: `.github/workflows/refresh-rainfall.yml`
+   - Runs at 0:30 UTC daily (= 6:00 AM IST)
+   - Calls `POST /api/rainfall/refresh`
+   - Requires admin authentication
+   - Can be manually triggered from Actions tab
+
+### Backend Refresh Endpoint
+
+- **Route**: `POST /api/rainfall/refresh`
+- **Auth**: Admin only (requires valid JWT)
+- **Behavior**: Triggers IMD collector in background; returns immediately
+- **Response**:
+  ```json
+  {
+    "status": "refresh_started",
+    "message": "Rainfall data refresh initiated in background",
+    "triggered_by": "admin@rockefeller.io"
+  }
+  ```
+
+### Manual Refresh
+
+To manually refresh without waiting for 6 AM:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <admin_jwt>" \
+  https://rockefeller-production.up.railway.app/api/rainfall/refresh
+```
+
+### Monitoring
+
+- Check workflow runs: Actions tab → "Refresh Rainfall Data Daily"
+- Logs show curl status and timestamp
+- Backend logs show IMD collector output (check Railway logs)
+
+### Notes
+
+- Cron schedule: `30 0 * * *` (UTC time, adjust as needed)
+- IMD collector uses free Open-Meteo API (no key required)
+- Refresh typically completes in <2 minutes for all 36 districts
+
 ## 12. Maintenance Notes
 
 When you update routes, models, or provider behavior, update this file together with README.md and backend/README.md so all docs remain synchronized.

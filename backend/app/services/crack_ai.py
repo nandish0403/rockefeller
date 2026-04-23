@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import json
 from pathlib import Path
 import shutil
+import zipfile
 from typing import Any
 from urllib.request import Request, urlopen
 
@@ -25,6 +27,66 @@ logger = logging.getLogger(__name__)
 
 class ModelUnavailableError(RuntimeError):
     """Raised when crack model cannot be prepared for inference."""
+
+
+def _strip_key_deep(value: Any, key_to_strip: str) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _strip_key_deep(val, key_to_strip)
+            for key, val in value.items()
+            if key != key_to_strip
+        }
+    if isinstance(value, list):
+        return [_strip_key_deep(item, key_to_strip) for item in value]
+    return value
+
+
+def _make_compat_model_archive(model_path: Path, key_to_strip: str = "quantization_config") -> Path:
+    if model_path.suffix.lower() != ".keras":
+        raise RuntimeError("Compatibility patch supports only .keras archives")
+
+    compat_path = model_path.with_suffix(".compat.keras")
+    with zipfile.ZipFile(model_path, "r") as source_zip:
+        if "config.json" not in source_zip.namelist():
+            raise RuntimeError("config.json missing in .keras archive")
+
+        raw_config = source_zip.read("config.json")
+        parsed_config = json.loads(raw_config.decode("utf-8"))
+        patched_config = _strip_key_deep(parsed_config, key_to_strip)
+        patched_config_bytes = json.dumps(patched_config, separators=(",", ":")).encode("utf-8")
+
+        with zipfile.ZipFile(compat_path, "w", compression=zipfile.ZIP_DEFLATED) as target_zip:
+            for name in source_zip.namelist():
+                if name == "config.json":
+                    target_zip.writestr(name, patched_config_bytes)
+                else:
+                    target_zip.writestr(name, source_zip.read(name))
+
+    return compat_path
+
+
+def _load_model_with_compat_fallback(tf: Any, model_path: Path) -> Any:
+    try:
+        return tf.keras.models.load_model(model_path, compile=False)
+    except Exception as exc:
+        err_text = str(exc)
+        if "quantization_config" not in err_text:
+            raise
+
+        logger.warning(
+            "Model deserialization failed due to quantization_config. Retrying with compatibility patch."
+        )
+        compat_path = _make_compat_model_archive(model_path, key_to_strip="quantization_config")
+        try:
+            model = tf.keras.models.load_model(compat_path, compile=False)
+            logger.info("Crack model loaded using compatibility patch")
+            return model
+        finally:
+            try:
+                if compat_path.exists():
+                    compat_path.unlink()
+            except Exception:
+                pass
 
 
 def _backend_root() -> Path:
@@ -171,7 +233,7 @@ def preload_crack_model() -> None:
     try:
         tf = _ensure_tf()
         model_path = _resolve_crack_model_path()
-        _model = tf.keras.models.load_model(model_path, compile=False)
+        _model = _load_model_with_compat_fallback(tf, model_path)
         _loaded_model_path = model_path
         _model_error = None
         logger.info("Crack model loaded")
@@ -201,7 +263,7 @@ def preload_crack_model() -> None:
         if not downloaded_path:
             raise RuntimeError("CRACK_MODEL_URL is required for retry download")
 
-        _model = tf.keras.models.load_model(downloaded_path, compile=False)
+        _model = _load_model_with_compat_fallback(tf, downloaded_path)
         _loaded_model_path = downloaded_path
         _model_error = None
         logger.info("Crack model loaded")
